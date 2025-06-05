@@ -13,7 +13,7 @@ import { RotateCcw } from "lucide-react-native";
 export default function TeamDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { teams, addPoints, getPointHistory, resetPoints } = useTeamStore();
+  const { teams, addPoints, getPointHistory, resetTeamPoints } = useTeamStore();
   const [pointsToAdd, setPointsToAdd] = useState("");
   const [reason, setReason] = useState("");
   const [activeTab, setActiveTab] = useState<"members" | "history">("members");
@@ -151,7 +151,7 @@ export default function TeamDetailsScreen() {
           text: "Reset", 
           onPress: () => {
             // Reset points for this team only
-            resetPoints();
+            resetTeamPoints(team.id);
             Alert.alert("Success", `${team.name}'s points have been reset to zero.`);
           },
           style: "destructive" 

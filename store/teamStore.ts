@@ -9,6 +9,7 @@ interface TeamState {
   teams: Team[];
   addPoints: (teamId: string, points: number, reason: string) => void;
   resetPoints: () => void;
+  resetTeamPoints: (teamId: string) => void; // New function to reset a single team's points
   getPointHistory: (teamId: string) => PointEntry[];
   syncWithSupabase: () => Promise<void>;
 }
@@ -113,6 +114,43 @@ export const useTeamStore = create<TeamState>()(
           
           return {
             teams: resetTeams,
+          };
+        }),
+        
+      // New function to reset a single team's points
+      resetTeamPoints: (teamId) =>
+        set((state) => {
+          const updatedTeams = state.teams.map((team) => 
+            team.id === teamId 
+              ? { ...team, points: 0, pointHistory: [] } 
+              : team
+          );
+          
+          // Try to reset points in Supabase
+          try {
+            // Reset team points
+            supabase
+              .from('teams')
+              .update({ points: 0 })
+              .eq('id', teamId)
+              .then(({ error }) => {
+                if (error) console.error('Error resetting team points in Supabase:', error);
+              });
+            
+            // Clear point history for this team
+            supabase
+              .from('point_history')
+              .delete()
+              .eq('teamid', teamId)
+              .then(({ error }) => {
+                if (error) console.error('Error clearing team point history in Supabase:', error);
+              });
+          } catch (error) {
+            console.error('Failed to reset team points in Supabase:', error);
+          }
+          
+          return {
+            teams: updatedTeams,
           };
         }),
         
