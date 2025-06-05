@@ -3,7 +3,7 @@ import { publicProcedure } from "../../../create-context";
 
 // Reference the same in-memory database
 declare const nominations: any[];
-declare const userVotes: any[];
+declare let userVotes: any[];
 
 export default publicProcedure
   .input(
@@ -27,11 +27,16 @@ export default publicProcedure
     
     // Reset user votes if requested
     if (day || type) {
-      userVotes = userVotes.filter(vote => {
+      // Filter the array instead of reassigning
+      const filteredVotes = userVotes.filter(vote => {
         if (day && vote.day === day) return false;
         if (type && vote.nominationType === type) return false;
         return true;
       });
+      
+      // Clear the array and push filtered items
+      userVotes.length = 0;
+      filteredVotes.forEach(vote => userVotes.push(vote));
     }
     
     return {

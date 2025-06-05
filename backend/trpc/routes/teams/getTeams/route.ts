@@ -1,10 +1,14 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { teams as initialTeams } from "@/mocks/teams";
+import { PointEntry } from "@/types";
 
-// Reference the same in-memory database
-// In a real app, you'd use a proper database
-declare const teams: any[];
+// In-memory database for teams
+// This should reference the same teams array from updatePoints
+let teams = [...initialTeams.map(team => ({
+  ...team,
+  pointHistory: [] as PointEntry[]
+}))];
 
 export default publicProcedure
   .query(() => {

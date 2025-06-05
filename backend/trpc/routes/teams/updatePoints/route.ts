@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { teams as initialTeams } from "@/mocks/teams";
+import { PointEntry } from "@/types";
 
 // In-memory database for teams and point history
 let teams = [...initialTeams.map(team => ({
   ...team,
-  pointHistory: []
+  pointHistory: [] as PointEntry[]
 }))];
 
 export default publicProcedure
@@ -27,7 +28,7 @@ export default publicProcedure
     }
     
     // Create a new point history entry
-    const pointEntry = {
+    const pointEntry: PointEntry = {
       id: Date.now().toString(),
       points,
       reason,

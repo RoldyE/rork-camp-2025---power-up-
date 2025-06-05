@@ -1,13 +1,15 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
+import { nominations as initialNominations } from "@/mocks/nominations";
+import { NominationType } from "@/types";
 
 // Reference the same in-memory database
-declare const nominations: any[];
+let nominations = [...initialNominations];
 
 // In-memory database for user votes
 let userVotes: {
   userId: string;
-  nominationType: string;
+  nominationType: NominationType;
   day: string;
   timestamp: string;
 }[] = [];
@@ -17,7 +19,7 @@ export default publicProcedure
     z.object({
       nominationId: z.string(),
       userId: z.string(),
-      nominationType: z.string(),
+      nominationType: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]),
       day: z.string(),
     })
   )

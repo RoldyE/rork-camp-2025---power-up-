@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { nominations as initialNominations } from "@/mocks/nominations";
+import { NominationType } from "@/types";
 
 // In-memory database for nominations
 let nominations = [...initialNominations];
@@ -11,7 +12,7 @@ export default publicProcedure
       camperId: z.string(),
       reason: z.string(),
       day: z.string(),
-      type: z.string(),
+      type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]),
     })
   )
   .mutation(({ input }) => {
@@ -23,7 +24,7 @@ export default publicProcedure
       camperId,
       reason,
       day,
-      type,
+      type: type as NominationType,
       votes: 0,
     };
     

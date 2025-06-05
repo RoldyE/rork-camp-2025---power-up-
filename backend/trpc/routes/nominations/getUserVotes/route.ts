@@ -1,14 +1,20 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
+import { NominationType } from "@/types";
 
-// Reference the same in-memory database
-declare const userVotes: any[];
+// Reference the same in-memory database from voteForNomination
+declare let userVotes: {
+  userId: string;
+  nominationType: NominationType;
+  day: string;
+  timestamp: string;
+}[];
 
 export default publicProcedure
   .input(
     z.object({
       userId: z.string(),
-      nominationType: z.string().optional(),
+      nominationType: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]).optional(),
       day: z.string().optional(),
     })
   )
