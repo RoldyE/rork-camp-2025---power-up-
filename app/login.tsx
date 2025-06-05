@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, Image, TextInput, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, Image, TextInput, Alert, ActivityIndicator } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/store/authStore";
@@ -8,23 +8,26 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuthStore();
+  const { login, isLoading, error } = useAuthStore();
   const [name, setName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleGuestLogin = () => {
+  const handleGuestLogin = async () => {
     if (!name.trim()) {
       Alert.alert("Error", "Please enter your name");
       return;
     }
 
-    login({
-      id: Date.now().toString(),
-      name: name.trim(),
-      isAdmin: false,
-    });
+    try {
+      await login({
+        id: Date.now().toString(),
+        name: name.trim(),
+        isAdmin: false,
+      });
 
-    router.replace("/(tabs)");
+      router.replace("/(tabs)");
+    } catch (err) {
+      Alert.alert("Login Error", "Failed to log in. Please try again.");
+    }
   };
 
   return (
@@ -58,13 +61,23 @@ export default function LoginScreen() {
               />
             </View>
             
+            {error && <Text style={styles.errorText}>{error}</Text>}
+            
             <Pressable 
               style={styles.guestButton}
               onPress={handleGuestLogin}
               disabled={isLoading}
             >
-              <Text style={styles.guestButtonText}>Continue as Guest</Text>
+              {isLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.guestButtonText}>Continue as Guest</Text>
+              )}
             </Pressable>
+            
+            <Text style={styles.syncText}>
+              This app uses real-time synchronization. All changes are shared with other users instantly.
+            </Text>
           </View>
         </View>
       </LinearGradient>
@@ -132,16 +145,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
   },
+  errorText: {
+    color: colors.error,
+    marginBottom: 16,
+  },
   guestButton: {
     height: 50,
     backgroundColor: colors.primary,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 16,
   },
   guestButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "white",
+  },
+  syncText: {
+    fontSize: 12,
+    color: colors.textLight,
+    textAlign: "center",
   },
 });

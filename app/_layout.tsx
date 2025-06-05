@@ -5,9 +5,13 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { colors } from "@/constants/colors";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore, useAuthSync } from "@/store/authStore";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useTeamSync } from "@/store/teamStore";
+import { useNominationSync } from "@/store/nominationStore";
+import { useResourceSync } from "@/store/resourceStore";
+import { useNotificationSync } from "@/store/notificationStore";
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -20,6 +24,13 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     ...FontAwesome.font,
   });
+
+  // Initialize all Supabase syncs
+  useTeamSync();
+  useNominationSync();
+  useResourceSync();
+  useNotificationSync();
+  useAuthSync();
 
   useEffect(() => {
     if (error) {

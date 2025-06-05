@@ -2,12 +2,18 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Resource } from "@/types";
+import { supabase } from "@/lib/supabase";
+import { useEffect } from "react";
 
 interface ResourceState {
   resources: Resource[];
-  addResource: (resource: Omit<Resource, "id" | "dateAdded">) => void;
-  deleteResource: (id: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  addResource: (resource: Omit<Resource, "id" | "dateAdded">) => Promise<void>;
+  deleteResource: (id: string) => Promise<void>;
   getResourcesByCategory: (category: Resource["category"]) => Resource[];
+  fetchResources: () => Promise<void>;
+  syncResources: () => void;
 }
 
 const initialResources: Resource[] = [
@@ -87,21 +93,101 @@ export const useResourceStore = create<ResourceState>()(
   persist(
     (set, get) => ({
       resources: initialResources,
-      addResource: (resource) =>
-        set((state) => ({
-          resources: [
-            ...state.resources,
-            {
-              ...resource,
-              id: Date.now().toString(),
-              dateAdded: new Date().toISOString(),
-            },
-          ],
-        })),
-      deleteResource: (id) =>
-        set((state) => ({
-          resources: state.resources.filter((resource) => resource.id !== id),
-        })),
+      isLoading: false,
+      error: null,
+      
+      fetchResources: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const { data, error } = await supabase
+            .from('resources')
+            .select('*');
+          
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+            set({ resources: data as Resource[] });
+          } else {
+            // Initialize with mock data if no data exists
+            for (const resource of initialResources) {
+              await supabase.from('resources').upsert(resource);
+            }
+            set({ resources: initialResources });
+          }
+        } catch (error: any) {
+          console.error('Error fetching resources:', error.message);
+          set({ error: error.message });
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+      
+      syncResources: () => {
+        const subscription = supabase
+          .channel('resources-changes')
+          .on('postgres_changes', 
+            { event: '*', schema: 'public', table: 'resources' }, 
+            async () => {
+              // Refresh resources when there's a change
+              await get().fetchResources();
+            }
+          )
+          .subscribe();
+
+        // Return unsubscribe function
+        return () => {
+          subscription.unsubscribe();
+        };
+      },
+      
+      addResource: async (resource) => {
+        try {
+          const newResource = {
+            ...resource,
+            id: Date.now().toString(),
+            dateAdded: new Date().toISOString(),
+          };
+          
+          // Update local state
+          set((state) => ({
+            resources: [
+              ...state.resources,
+              newResource,
+            ],
+          }));
+          
+          // Update in Supabase
+          const { error } = await supabase
+            .from('resources')
+            .insert(newResource);
+          
+          if (error) throw error;
+        } catch (error: any) {
+          console.error('Error adding resource:', error.message);
+          set({ error: error.message });
+        }
+      },
+      
+      deleteResource: async (id) => {
+        try {
+          // Update local state
+          set((state) => ({
+            resources: state.resources.filter((resource) => resource.id !== id),
+          }));
+          
+          // Delete from Supabase
+          const { error } = await supabase
+            .from('resources')
+            .delete()
+            .eq('id', id);
+          
+          if (error) throw error;
+        } catch (error: any) {
+          console.error('Error deleting resource:', error.message);
+          set({ error: error.message });
+        }
+      },
+      
       getResourcesByCategory: (category) => {
         return get().resources.filter((resource) => resource.category === category);
       },
@@ -112,3 +198,23 @@ export const useResourceStore = create<ResourceState>()(
     }
   )
 );
+
+// Hook to initialize and sync with Supabase
+export const useResourceSync = () => {
+  const { fetchResources, syncResources } = useResourceStore();
+
+  useEffect(() => {
+    // Initial fetch
+    fetchResources();
+
+    // Set up real-time sync
+    const unsubscribe = syncResources();
+
+    // Cleanup subscription on unmount
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
+  }, [fetchResources, syncResources]);
+};
