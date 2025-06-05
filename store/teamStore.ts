@@ -41,6 +41,36 @@ export const useTeamStore = create<TeamState>()(
               : team
           );
           
+          // Try to update in Supabase
+          try {
+            // Add to point history
+            supabase
+              .from('point_history')
+              .insert([{
+                teamid: teamId,
+                points: points,
+                reason: reason,
+                date: new Date().toISOString()
+              }])
+              .then(({ error }) => {
+                if (error) console.error('Error adding points to Supabase:', error);
+              });
+              
+            // Update team points
+            const team = updatedTeams.find(t => t.id === teamId);
+            if (team) {
+              supabase
+                .from('teams')
+                .update({ points: team.points })
+                .eq('id', teamId)
+                .then(({ error }) => {
+                  if (error) console.error('Error updating team points in Supabase:', error);
+                });
+            }
+          } catch (error) {
+            console.error('Failed to update points in Supabase:', error);
+          }
+          
           return {
             teams: updatedTeams,
           };
@@ -58,17 +88,23 @@ export const useTeamStore = create<TeamState>()(
           try {
             // Reset team points
             resetTeams.forEach(async (team) => {
-              await supabase
+              supabase
                 .from('teams')
                 .update({ points: 0 })
-                .eq('id', team.id);
+                .eq('id', team.id)
+                .then(({ error }) => {
+                  if (error) console.error('Error resetting team points in Supabase:', error);
+                });
             });
             
             // Clear point history
             supabase
               .from('point_history')
               .delete()
-              .gte('id', 0);
+              .gte('id', 0)
+              .then(({ error }) => {
+                if (error) console.error('Error clearing point history in Supabase:', error);
+              });
           } catch (error) {
             console.error('Failed to reset points in Supabase:', error);
           }
@@ -124,18 +160,19 @@ export const useTeamStore = create<TeamState>()(
             set({ teams: teamsWithHistory });
           } else {
             // If no teams in Supabase, initialize with local data
-            const { error } = await supabase
-              .from('teams')
-              .insert(initialTeams.map(team => ({
-                id: team.id,
-                name: team.name,
-                color: team.color,
-                points: team.points
-              })));
-              
-            if (error) {
-              console.error('Error initializing teams in Supabase:', error);
-            }
+            initialTeams.forEach(team => {
+              supabase
+                .from('teams')
+                .insert([{
+                  id: team.id,
+                  name: team.name,
+                  color: team.color,
+                  points: team.points
+                }])
+                .then(({ error }) => {
+                  if (error) console.error('Error initializing teams in Supabase:', error);
+                });
+            });
           }
         } catch (error) {
           console.error('Failed to sync with Supabase:', error);

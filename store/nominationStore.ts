@@ -51,7 +51,7 @@ export const useNominationStore = create<NominationState>()(
         
         // Try to add to Supabase
         try {
-          const { error } = await supabase
+          supabase
             .from('nominations')
             .insert([{
               camperid: nomination.camperId,
@@ -60,11 +60,10 @@ export const useNominationStore = create<NominationState>()(
               day: nomination.day,
               type: nomination.type,
               created_at: new Date().toISOString()
-            }]);
-            
-          if (error) {
-            console.error('Error adding nomination to Supabase:', error);
-          }
+            }])
+            .then(({ error }) => {
+              if (error) console.error('Error adding nomination to Supabase:', error);
+            });
         } catch (error) {
           console.error('Failed to add nomination to Supabase:', error);
         }
@@ -86,17 +85,16 @@ export const useNominationStore = create<NominationState>()(
           const nomination = get().nominations.find(nom => nom.id === nominationId);
           
           if (nomination) {
-            const { error } = await supabase
+            supabase
               .from('nominations')
               .update({ votes: nomination.votes + 1 })
-              .eq('id', nominationId);
-              
-            if (error) {
-              console.error('Error updating votes in Supabase:', error);
-            }
+              .eq('id', nominationId)
+              .then(({ error }) => {
+                if (error) console.error('Error updating votes in Supabase:', error);
+              });
             
             // Record the vote
-            const { error: voteError } = await supabase
+            supabase
               .from('user_votes')
               .insert([{
                 userid: userId,
@@ -104,11 +102,10 @@ export const useNominationStore = create<NominationState>()(
                 nominationtype: nomination.type,
                 day: nomination.day,
                 timestamp: new Date().toISOString()
-              }]);
-              
-            if (voteError) {
-              console.error('Error recording vote in Supabase:', voteError);
-            }
+              }])
+              .then(({ error }) => {
+                if (error) console.error('Error recording vote in Supabase:', error);
+              });
           }
         } catch (error) {
           console.error('Failed to update votes in Supabase:', error);
@@ -122,14 +119,13 @@ export const useNominationStore = create<NominationState>()(
         
         // Try to delete from Supabase
         try {
-          const { error } = await supabase
+          supabase
             .from('nominations')
             .delete()
-            .eq('id', nominationId);
-            
-          if (error) {
-            console.error('Error deleting nomination from Supabase:', error);
-          }
+            .eq('id', nominationId)
+            .then(({ error }) => {
+              if (error) console.error('Error deleting nomination from Supabase:', error);
+            });
         } catch (error) {
           console.error('Failed to delete nomination from Supabase:', error);
         }
@@ -144,26 +140,24 @@ export const useNominationStore = create<NominationState>()(
         
         // Try to reset votes in Supabase
         try {
-          const { error } = await supabase
+          supabase
             .from('nominations')
             .update({ votes: 0 })
             .eq('day', day)
-            .eq('type', type);
-            
-          if (error) {
-            console.error('Error resetting votes in Supabase:', error);
-          }
+            .eq('type', type)
+            .then(({ error }) => {
+              if (error) console.error('Error resetting votes in Supabase:', error);
+            });
           
           // Also clear user votes for this type and day
-          const { error: voteError } = await supabase
+          supabase
             .from('user_votes')
             .delete()
             .eq('day', day)
-            .eq('nominationtype', type);
-            
-          if (voteError) {
-            console.error('Error clearing user votes in Supabase:', voteError);
-          }
+            .eq('nominationtype', type)
+            .then(({ error }) => {
+              if (error) console.error('Error clearing user votes in Supabase:', error);
+            });
         } catch (error) {
           console.error('Failed to reset votes in Supabase:', error);
         }
@@ -238,18 +232,17 @@ export const useNominationStore = create<NominationState>()(
         
         // Try to record in Supabase
         try {
-          const { error } = await supabase
+          supabase
             .from('user_votes')
             .insert([{
               userid: userId,
               nominationtype: nominationType,
               day: day,
               timestamp: new Date().toISOString()
-            }]);
-            
-          if (error) {
-            console.error('Error recording user vote in Supabase:', error);
-          }
+            }])
+            .then(({ error }) => {
+              if (error) console.error('Error recording user vote in Supabase:', error);
+            });
         } catch (error) {
           console.error('Failed to record user vote in Supabase:', error);
         }
@@ -262,14 +255,13 @@ export const useNominationStore = create<NominationState>()(
         
         // Try to reset in Supabase
         try {
-          const { error } = await supabase
+          supabase
             .from('user_votes')
             .delete()
-            .gte('id', 0);
-            
-          if (error) {
-            console.error('Error resetting user votes in Supabase:', error);
-          }
+            .gte('id', 0)
+            .then(({ error }) => {
+              if (error) console.error('Error resetting user votes in Supabase:', error);
+            });
         } catch (error) {
           console.error('Failed to reset user votes in Supabase:', error);
         }
@@ -310,20 +302,21 @@ export const useNominationStore = create<NominationState>()(
             set({ nominations: mappedNominations });
           } else {
             // Initialize with local data if none in Supabase
-            const { error } = await supabase
-              .from('nominations')
-              .insert(initialNominations.map(nom => ({
-                id: nom.id,
-                camperid: nom.camperId,
-                reason: nom.reason,
-                votes: nom.votes,
-                day: nom.day,
-                type: nom.type
-              })));
-              
-            if (error) {
-              console.error('Error initializing nominations in Supabase:', error);
-            }
+            initialNominations.forEach(nom => {
+              supabase
+                .from('nominations')
+                .insert([{
+                  id: nom.id,
+                  camperid: nom.camperId,
+                  reason: nom.reason,
+                  votes: nom.votes,
+                  day: nom.day,
+                  type: nom.type
+                }])
+                .then(({ error }) => {
+                  if (error) console.error('Error initializing nominations in Supabase:', error);
+                });
+            });
           }
           
           if (votesData && votesData.length > 0) {
