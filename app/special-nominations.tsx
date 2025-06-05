@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { View, Text, StyleSheet, FlatList, Pressable, Alert } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
@@ -13,21 +13,9 @@ import { useAuthStore } from "@/store/authStore";
 export default function SpecialNominationsScreen() {
   const router = useRouter();
   const [selectedType, setSelectedType] = useState<NominationType>("sportsmanship");
-  const { 
-    getWeeklyNominations, 
-    getTopNominationsByType, 
-    resetVotes, 
-    resetUserVotes, 
-    getUserVoteCount,
-    fetchNominations
-  } = useNominationStore();
+  const { getWeeklyNominations, getTopNominationsByType, resetVotes, resetUserVotes, getUserVoteCount } = useNominationStore();
   const { userProfile } = useAuthStore();
   
-  useEffect(() => {
-    // Fetch latest nominations from Supabase
-    fetchNominations();
-  }, []);
-
   // Get all nominations of the selected type (not just daily ones)
   const nominations = getWeeklyNominations(selectedType);
   const topNominations = getTopNominationsByType(selectedType, 3);

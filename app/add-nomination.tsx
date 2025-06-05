@@ -12,18 +12,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AddNominationScreen() {
   const router = useRouter();
-  const { addNomination, fetchNominations } = useNominationStore();
+  const { addNomination } = useNominationStore();
   
   const [selectedDay, setSelectedDay] = useState("Tuesday");
   const [selectedCamperId, setSelectedCamperId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [nominationType, setNominationType] = useState<NominationType>("daily");
   
-  useEffect(() => {
-    // Fetch latest nominations from Supabase
-    fetchNominations();
-  }, []);
-
   const handleSubmit = () => {
     if (!selectedCamperId) {
       Alert.alert("Error", "Please select a camper");

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { View, Text, StyleSheet, Pressable, TextInput, Alert, FlatList, ScrollView } from "react-native";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
@@ -12,17 +12,12 @@ import { ChevronDown, ChevronUp } from "lucide-react-native";
 export default function TeamDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { teams, addPoints, getPointHistory, fetchTeams } = useTeamStore();
+  const { teams, addPoints, getPointHistory } = useTeamStore();
   const [pointsToAdd, setPointsToAdd] = useState("");
   const [reason, setReason] = useState("");
   const [activeTab, setActiveTab] = useState<"members" | "history">("members");
   const [expandedTeam, setExpandedTeam] = useState(true);
   
-  useEffect(() => {
-    // Fetch latest team data from Supabase
-    fetchTeams();
-  }, []);
-
   const team = teams.find((t) => t.id === id);
   const teamCampers = campers.filter((c) => c.teamId === id);
   const pointHistory = getPointHistory(id || "");
