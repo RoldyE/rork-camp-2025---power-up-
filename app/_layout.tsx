@@ -8,6 +8,7 @@ import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/store/authStore";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { supabase } from "@/lib/supabase";
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -33,6 +34,32 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  // Set up Supabase real-time subscriptions
+  useEffect(() => {
+    // Subscribe to team changes
+    const teamSubscription = supabase
+      .channel('public:teams')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, payload => {
+        console.log('Team change received!', payload);
+        // You would typically refresh your data here
+      })
+      .subscribe();
+
+    // Subscribe to nomination changes
+    const nominationSubscription = supabase
+      .channel('public:nominations')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'nominations' }, payload => {
+        console.log('Nomination change received!', payload);
+        // You would typically refresh your data here
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(teamSubscription);
+      supabase.removeChannel(nominationSubscription);
+    };
+  }, []);
 
   if (!loaded) {
     return null;

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, FlatList, Text, Pressable, Alert } from "react-native";
 import { DaySelector } from "@/components/DaySelector";
 import { Header } from "@/components/Header";
@@ -15,9 +15,24 @@ import { useAuthStore } from "@/store/authStore";
 export default function NominationsScreen() {
   const [selectedDay, setSelectedDay] = useState("Tuesday");
   const [selectedType, setSelectedType] = useState<NominationType>("daily");
-  const { getCurrentDayNominations, getWeeklyNominations, resetVotes, resetUserVotes, getUserVoteCount } = useNominationStore();
+  const { 
+    getCurrentDayNominations, 
+    getWeeklyNominations, 
+    resetVotes, 
+    resetUserVotes, 
+    getUserVoteCount,
+    fetchNominations,
+    syncNominations
+  } = useNominationStore();
   const { userProfile } = useAuthStore();
   
+  useEffect(() => {
+    // Initialize Supabase data
+    syncNominations();
+    // Fetch nominations from Supabase
+    fetchNominations();
+  }, []);
+
   // Get nominations based on type - daily uses the selected day, others show all days
   const nominations = selectedType === "daily" 
     ? getCurrentDayNominations(selectedDay, selectedType)

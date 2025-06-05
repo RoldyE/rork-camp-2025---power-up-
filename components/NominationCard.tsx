@@ -30,10 +30,10 @@ export const NominationCard = ({ nomination, onDelete }: NominationCardProps) =>
     if (!userProfile) return;
     
     // Check if user has already voted for this nomination type
-    const hasVoted = hasUserVoted(userProfile.id, nomination.type);
+    const hasVoted = hasUserVoted(userProfile.id, nomination.type, nomination.day);
     
     if (hasVoted) {
-      Alert.alert("Already Voted", "You have already voted for a nomination in this category");
+      Alert.alert("Already Voted", "You have already used your maximum votes for this category");
       return;
     }
     
