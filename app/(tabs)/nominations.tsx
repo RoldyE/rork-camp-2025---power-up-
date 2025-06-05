@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, StyleSheet, FlatList, Text, Pressable, Alert } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, StyleSheet, FlatList, Text, Pressable, Alert, ActivityIndicator } from "react-native";
 import { DaySelector } from "@/components/DaySelector";
 import { Header } from "@/components/Header";
 import { NominationCard } from "@/components/NominationCard";
@@ -11,6 +11,7 @@ import { NominationTypeSelector } from "@/components/NominationTypeSelector";
 import { NominationType } from "@/types";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/authStore";
+import { usePolling } from "@/hooks/usePolling";
 
 export default function NominationsScreen() {
   const [selectedDay, setSelectedDay] = useState("Tuesday");
@@ -21,9 +22,31 @@ export default function NominationsScreen() {
     getWeeklyNominations, 
     resetVotes, 
     resetUserVotes, 
-    getUserVoteCount
+    getUserVoteCount,
+    fetchNominations,
+    isLoading
   } = useNominationStore();
   const { userProfile } = useAuthStore();
+  
+  // Initial fetch
+  useEffect(() => {
+    if (selectedType === "daily") {
+      fetchNominations(selectedType, selectedDay);
+    } else {
+      fetchNominations(selectedType);
+    }
+  }, [selectedType, selectedDay]);
+  
+  // Set up polling to keep nominations data fresh
+  const pollFn = () => {
+    if (selectedType === "daily") {
+      return fetchNominations(selectedType, selectedDay);
+    } else {
+      return fetchNominations(selectedType);
+    }
+  };
+  
+  usePolling(pollFn, { interval: 10000 });
   
   // Get nominations based on type - daily uses the selected day, others show all days
   const displayNominations = selectedType === "daily" 
@@ -43,13 +66,13 @@ export default function NominationsScreen() {
         { text: "Cancel", style: "cancel" },
         { 
           text: "Reset", 
-          onPress: () => {
+          onPress: async () => {
             if (selectedType === "daily") {
-              resetVotes(selectedDay, selectedType);
+              await resetVotes(selectedDay, selectedType);
             } else {
               // For special nominations, reset votes for all days of this type
-              ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].forEach(day => {
-                resetVotes(day, selectedType);
+              ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].forEach(async (day) => {
+                await resetVotes(day, selectedType);
               });
             }
             resetUserVotes(); // Reset user votes when resetting nomination votes
@@ -87,6 +110,12 @@ export default function NominationsScreen() {
           <Text style={styles.voteCountText}>
             You have used {voteCount}/2 votes for {selectedType === "daily" ? selectedDay : "this category"}
           </Text>
+        </View>
+      )}
+      
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       )}
       
@@ -151,6 +180,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textLight,
     textAlign: "center",
+  },
+  loadingContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    zIndex: 10,
   },
   listContent: {
     padding: 16,

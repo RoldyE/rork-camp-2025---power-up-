@@ -16,7 +16,7 @@ type NominationCardProps = {
 };
 
 export const NominationCard = ({ nomination, onDelete }: NominationCardProps) => {
-  const { voteForNomination, deleteNomination, hasUserVoted, recordUserVote } = useNominationStore();
+  const { voteForNomination, deleteNomination, hasUserVoted } = useNominationStore();
   const { userProfile } = useAuthStore();
   const camper = campers.find((c) => c.id === nomination.camperId);
   const team = camper ? teams.find((t) => t.id === camper.teamId) : null;
@@ -26,7 +26,7 @@ export const NominationCard = ({ nomination, onDelete }: NominationCardProps) =>
   const typeColor = getNominationTypeColor(nomination.type);
   const typeLabel = getNominationTypeLabel(nomination.type);
   
-  const handleVote = () => {
+  const handleVote = async () => {
     if (!userProfile) {
       Alert.alert("Login Required", "Please log in to vote");
       return;
@@ -41,8 +41,7 @@ export const NominationCard = ({ nomination, onDelete }: NominationCardProps) =>
     }
     
     // Record the vote
-    voteForNomination(nomination.id, userProfile.id);
-    recordUserVote(userProfile.id, nomination.type, nomination.day);
+    await voteForNomination(nomination.id, userProfile.id, nomination.type, nomination.day);
   };
   
   const handleDelete = () => {

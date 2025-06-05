@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable, Alert } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, FlatList, Pressable, Alert, ActivityIndicator } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { NominationTypeSelector, getNominationTypeLabel } from "@/components/NominationTypeSelector";
@@ -9,12 +9,29 @@ import { NominationCard } from "@/components/NominationCard";
 import { Plus, RotateCcw } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/authStore";
+import { usePolling } from "@/hooks/usePolling";
 
 export default function SpecialNominationsScreen() {
   const router = useRouter();
   const [selectedType, setSelectedType] = useState<NominationType>("sportsmanship");
-  const { getWeeklyNominations, getTopNominationsByType, resetVotes, resetUserVotes, getUserVoteCount } = useNominationStore();
+  const { 
+    getWeeklyNominations, 
+    getTopNominationsByType, 
+    resetVotes, 
+    resetUserVotes, 
+    getUserVoteCount,
+    fetchNominations,
+    isLoading
+  } = useNominationStore();
   const { userProfile } = useAuthStore();
+  
+  // Initial fetch
+  useEffect(() => {
+    fetchNominations(selectedType);
+  }, [selectedType]);
+  
+  // Set up polling to keep nominations data fresh
+  usePolling(() => fetchNominations(selectedType), { interval: 10000 });
   
   // Get all nominations of the selected type (not just daily ones)
   const nominations = getWeeklyNominations(selectedType);
@@ -33,10 +50,10 @@ export default function SpecialNominationsScreen() {
         { text: "Cancel", style: "cancel" },
         { 
           text: "Reset", 
-          onPress: () => {
+          onPress: async () => {
             // Reset votes for all days of this type
-            ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].forEach(day => {
-              resetVotes(day, selectedType);
+            ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].forEach(async (day) => {
+              await resetVotes(day, selectedType);
             });
             resetUserVotes(); // Reset user votes when resetting nomination votes
             Alert.alert("Success", "Votes have been reset.");
@@ -68,6 +85,12 @@ export default function SpecialNominationsScreen() {
           <Text style={styles.voteCountText}>
             You have used {voteCount}/2 votes for {getNominationTypeLabel(selectedType)}
           </Text>
+        </View>
+      )}
+      
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       )}
       
@@ -126,6 +149,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    zIndex: 10,
   },
   voteCountContainer: {
     backgroundColor: colors.card,

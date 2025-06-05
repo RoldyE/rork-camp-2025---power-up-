@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, Alert } from "react-native";
+import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, Alert, ActivityIndicator } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { DaySelector } from "@/components/DaySelector";
@@ -12,14 +12,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AddNominationScreen() {
   const router = useRouter();
-  const { addNomination } = useNominationStore();
+  const { addNomination, isLoading } = useNominationStore();
   
   const [selectedDay, setSelectedDay] = useState("Tuesday");
   const [selectedCamperId, setSelectedCamperId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [nominationType, setNominationType] = useState<NominationType>("daily");
   
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedCamperId) {
       Alert.alert("Error", "Please select a camper");
       return;
@@ -30,7 +30,7 @@ export default function AddNominationScreen() {
       return;
     }
     
-    addNomination({
+    await addNomination({
       camperId: selectedCamperId,
       reason: reason.trim(),
       day: selectedDay,
@@ -54,6 +54,12 @@ export default function AddNominationScreen() {
           },
         }} 
       />
+      
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
       
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.sectionTitle}>Nomination Type</Text>
@@ -124,6 +130,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    zIndex: 10,
   },
   content: {
     padding: 16,

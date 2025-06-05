@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, Alert, FlatList } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, Pressable, TextInput, Alert, FlatList, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { useTeamStore } from "@/store/teamStore";
@@ -8,14 +8,23 @@ import { CamperCard } from "@/components/CamperCard";
 import { PointHistoryCard } from "@/components/PointHistoryCard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { RotateCcw } from "lucide-react-native";
+import { usePolling } from "@/hooks/usePolling";
 
 export default function TeamDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { teams, addPoints, getPointHistory, resetTeamPoints } = useTeamStore();
+  const { teams, addPoints, getPointHistory, resetTeamPoints, fetchTeams, isLoading } = useTeamStore();
   const [pointsToAdd, setPointsToAdd] = useState("");
   const [reason, setReason] = useState("");
   const [activeTab, setActiveTab] = useState<"members" | "history">("members");
+  
+  // Initial fetch
+  useEffect(() => {
+    fetchTeams();
+  }, []);
+  
+  // Set up polling to keep team data fresh
+  usePolling(fetchTeams, { interval: 10000 });
   
   const team = teams.find((t) => t.id === id);
   const pointHistory = getPointHistory(id || "");
@@ -29,7 +38,7 @@ export default function TeamDetailsScreen() {
     );
   }
   
-  const handleAddPoints = () => {
+  const handleAddPoints = async () => {
     const points = parseInt(pointsToAdd);
     if (isNaN(points)) {
       Alert.alert("Invalid Input", "Please enter a valid number");
@@ -41,19 +50,19 @@ export default function TeamDetailsScreen() {
       return;
     }
     
-    // Add points locally
-    addPoints(team.id, points, reason.trim());
+    // Add points
+    await addPoints(team.id, points, reason.trim());
     
     setPointsToAdd("");
     setReason("");
     Alert.alert("Points Added", `${points} points added to ${team.name}`);
   };
 
-  const handleQuickAddPoints = (points: number) => {
+  const handleQuickAddPoints = async (points: number) => {
     const defaultReason = `Quick add ${points} points`;
     
-    // Add points locally
-    addPoints(team.id, points, defaultReason);
+    // Add points
+    await addPoints(team.id, points, defaultReason);
     
     Alert.alert("Success", `${points} points added to ${team.name}`);
   };
@@ -66,9 +75,9 @@ export default function TeamDetailsScreen() {
         { text: "Cancel", style: "cancel" },
         { 
           text: "Reset", 
-          onPress: () => {
+          onPress: async () => {
             // Reset points for this team only
-            resetTeamPoints(team.id);
+            await resetTeamPoints(team.id);
             Alert.alert("Success", `${team.name}'s points have been reset to zero.`);
           },
           style: "destructive" 
@@ -87,6 +96,12 @@ export default function TeamDetailsScreen() {
           },
         }} 
       />
+      
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
       
       <View style={[styles.header, { backgroundColor: team.color + "20" }]}>
         <Text style={styles.teamName}>{team.name}</Text>
@@ -230,6 +245,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    zIndex: 10,
   },
   header: {
     padding: 20,
