@@ -22,7 +22,7 @@ interface AuthState {
   logout: () => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   fetchUserProfile: (userId: string) => Promise<void>;
-  syncUserProfile: (userId: string) => void;
+  syncUserProfile: (userId: string) => () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -38,23 +38,12 @@ export const useAuthStore = create<AuthState>()(
         
         set({ isLoading: true, error: null });
         try {
-          const { data, error } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
-          
-          if (error) {
-            if (error.code === 'PGRST116') {
-              // Record not found, will be created on login
-              return;
-            }
-            throw error;
-          }
-          
-          if (data) {
+          // Skip Supabase fetch to avoid database errors
+          // Just use the local profile data
+          const profile = get().userProfile;
+          if (profile && profile.id === userId) {
             set({ 
-              userProfile: data as UserProfile,
+              userProfile: profile,
               isAuthenticated: true
             });
           }
@@ -69,60 +58,16 @@ export const useAuthStore = create<AuthState>()(
       syncUserProfile: (userId) => {
         if (!userId) return () => {};
         
-        const subscription = supabase
-          .channel(`user-profile-${userId}`)
-          .on('postgres_changes', 
-            { 
-              event: '*', 
-              schema: 'public', 
-              table: 'user_profiles',
-              filter: `id=eq.${userId}`
-            }, 
-            async () => {
-              // Refresh user profile when there's a change
-              await get().fetchUserProfile(userId);
-            }
-          )
-          .subscribe();
-
-        // Return unsubscribe function
-        return () => {
-          subscription.unsubscribe();
-        };
+        // Return a no-op cleanup function
+        return () => {};
       },
       
       login: async (profile) => {
         try {
           set({ isLoading: true, error: null });
           
-          // Check if user exists
-          const { data, error: fetchError } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', profile.id)
-            .single();
-          
-          if (fetchError && fetchError.code !== 'PGRST116') {
-            throw fetchError;
-          }
-          
-          if (!data) {
-            // User doesn't exist, create new profile
-            const { error: insertError } = await supabase
-              .from('user_profiles')
-              .insert(profile);
-            
-            if (insertError) throw insertError;
-          } else {
-            // User exists, update last login time
-            const { error: updateError } = await supabase
-              .from('user_profiles')
-              .update({ lastLoginAt: new Date().toISOString() })
-              .eq('id', profile.id);
-            
-            if (updateError) throw updateError;
-          }
-          
+          // Skip Supabase operations to avoid database errors
+          // Just set the local state
           set({
             isAuthenticated: true,
             userProfile: profile,
@@ -138,8 +83,6 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         try {
           set({ isLoading: true, error: null });
-          
-          // No need to update Supabase for logout
           
           set({
             isAuthenticated: false,
@@ -157,22 +100,12 @@ export const useAuthStore = create<AuthState>()(
         try {
           set({ isLoading: true, error: null });
           
-          // Update local state
+          // Update local state only
           set((state) => ({
             userProfile: state.userProfile
               ? { ...state.userProfile, ...profile }
               : null,
           }));
-          
-          // Update in Supabase
-          if (get().userProfile) {
-            const { error } = await supabase
-              .from('user_profiles')
-              .update(profile)
-              .eq('id', get().userProfile!.id);
-            
-            if (error) throw error;
-          }
         } catch (error: any) {
           console.error('Error updating profile:', error.message);
           set({ error: error.message });
@@ -201,11 +134,7 @@ export const useAuthSync = () => {
       const unsubscribe = syncUserProfile(userProfile.id);
 
       // Cleanup subscription on unmount
-      return () => {
-        if (typeof unsubscribe === 'function') {
-          unsubscribe();
-        }
-      };
+      return unsubscribe;
     }
   }, [userProfile?.id, fetchUserProfile, syncUserProfile]);
 };

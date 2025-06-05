@@ -30,7 +30,7 @@ interface NominationState {
   recordUserVote: (userId: string, nominationType: NominationType, day: string) => Promise<void>;
   resetUserVotes: () => Promise<void>;
   fetchNominations: () => Promise<void>;
-  syncNominations: () => void;
+  syncNominations: () => () => void;
 }
 
 export const useNominationStore = create<NominationState>()(
@@ -323,10 +323,6 @@ export const useNominationSync = () => {
     const unsubscribe = syncNominations();
 
     // Cleanup subscription on unmount
-    return () => {
-      if (typeof unsubscribe === 'function') {
-        unsubscribe();
-      }
-    };
+    return unsubscribe;
   }, [fetchNominations, syncNominations]);
 };

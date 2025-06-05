@@ -13,7 +13,7 @@ interface ResourceState {
   deleteResource: (id: string) => Promise<void>;
   getResourcesByCategory: (category: Resource["category"]) => Resource[];
   fetchResources: () => Promise<void>;
-  syncResources: () => void;
+  syncResources: () => () => void;
 }
 
 const initialResources: Resource[] = [
@@ -211,10 +211,6 @@ export const useResourceSync = () => {
     const unsubscribe = syncResources();
 
     // Cleanup subscription on unmount
-    return () => {
-      if (typeof unsubscribe === 'function') {
-        unsubscribe();
-      }
-    };
+    return unsubscribe;
   }, [fetchResources, syncResources]);
 };

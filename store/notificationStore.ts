@@ -16,7 +16,7 @@ interface NotificationState {
   deleteNotification: (id: string) => Promise<void>;
   clearAllNotifications: () => Promise<void>;
   fetchNotifications: () => Promise<void>;
-  syncNotifications: () => void;
+  syncNotifications: () => () => void;
 }
 
 // Initial notifications for demo purposes
@@ -253,10 +253,6 @@ export const useNotificationSync = () => {
     const unsubscribe = syncNotifications();
 
     // Cleanup subscription on unmount
-    return () => {
-      if (typeof unsubscribe === 'function') {
-        unsubscribe();
-      }
-    };
+    return unsubscribe;
   }, [fetchNotifications, syncNotifications]);
 };

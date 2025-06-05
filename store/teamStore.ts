@@ -14,7 +14,7 @@ interface TeamState {
   resetPoints: () => Promise<void>;
   getPointHistory: (teamId: string) => PointEntry[];
   fetchTeams: () => Promise<void>;
-  syncTeams: () => void;
+  syncTeams: () => () => void;
 }
 
 export const useTeamStore = create<TeamState>()(
@@ -169,10 +169,6 @@ export const useTeamSync = () => {
     const unsubscribe = syncTeams();
 
     // Cleanup subscription on unmount
-    return () => {
-      if (typeof unsubscribe === 'function') {
-        unsubscribe();
-      }
-    };
+    return unsubscribe;
   }, [fetchTeams, syncTeams]);
 };

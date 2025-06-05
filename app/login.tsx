@@ -18,6 +18,7 @@ export default function LoginScreen() {
     }
 
     try {
+      // Simplified login that doesn't require database tables
       await login({
         id: Date.now().toString(),
         name: name.trim(),
