@@ -77,7 +77,7 @@ export default function LoginScreen() {
             </Pressable>
             
             <Text style={styles.syncText}>
-              This app uses real-time synchronization. All changes are shared with other users instantly.
+              This app uses local storage for data persistence. Changes are saved to your device.
             </Text>
           </View>
         </View>

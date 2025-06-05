@@ -25,7 +25,7 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  // Initialize all Supabase syncs
+  // Initialize all store syncs
   useTeamSync();
   useNominationSync();
   useResourceSync();

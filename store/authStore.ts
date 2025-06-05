@@ -123,18 +123,15 @@ export const useAuthStore = create<AuthState>()(
 
 // Hook to initialize and sync user profile
 export const useAuthSync = () => {
-  const { userProfile, fetchUserProfile, syncUserProfile } = useAuthStore();
+  const { userProfile, fetchUserProfile } = useAuthStore();
 
   useEffect(() => {
     if (userProfile?.id) {
       // Initial fetch
       fetchUserProfile(userProfile.id);
-
-      // Set up real-time sync
-      const unsubscribe = syncUserProfile(userProfile.id);
-
-      // Cleanup subscription on unmount
-      return unsubscribe;
     }
-  }, [userProfile?.id, fetchUserProfile, syncUserProfile]);
+    
+    // No real-time sync needed since we're not using Supabase
+    return () => {};
+  }, [userProfile?.id, fetchUserProfile]);
 };

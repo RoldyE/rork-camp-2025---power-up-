@@ -60,28 +60,12 @@ export const useNotificationStore = create<NotificationState>()(
       fetchNotifications: async () => {
         set({ isLoading: true, error: null });
         try {
-          const { data, error } = await supabase
-            .from('notifications')
-            .select('*')
-            .order('timestamp', { ascending: false });
-          
-          if (error) throw error;
-          
-          if (data && data.length > 0) {
-            set({ 
-              notifications: data as Notification[],
-              hasUnreadNotifications: data.some(n => !n.read)
-            });
-          } else {
-            // Initialize with mock data if no data exists
-            for (const notification of initialNotifications) {
-              await supabase.from('notifications').upsert(notification);
-            }
-            set({ 
-              notifications: initialNotifications,
-              hasUnreadNotifications: initialNotifications.some(n => !n.read)
-            });
-          }
+          // Skip Supabase fetch to avoid database errors
+          // Just use the local notifications data
+          set({ 
+            notifications: initialNotifications,
+            hasUnreadNotifications: initialNotifications.some(n => !n.read)
+          });
         } catch (error: any) {
           console.error('Error fetching notifications:', error.message);
           set({ error: error.message });
@@ -91,21 +75,8 @@ export const useNotificationStore = create<NotificationState>()(
       },
       
       syncNotifications: () => {
-        const subscription = supabase
-          .channel('notifications-changes')
-          .on('postgres_changes', 
-            { event: '*', schema: 'public', table: 'notifications' }, 
-            async () => {
-              // Refresh notifications when there's a change
-              await get().fetchNotifications();
-            }
-          )
-          .subscribe();
-
-        // Return unsubscribe function
-        return () => {
-          subscription.unsubscribe();
-        };
+        // Return a no-op cleanup function since we're not using Supabase real-time
+        return () => {};
       },
       
       addNotification: async (notification) => {
@@ -117,18 +88,11 @@ export const useNotificationStore = create<NotificationState>()(
             read: false,
           };
           
-          // Update local state
+          // Update local state only
           set((state) => ({
             notifications: [newNotification, ...state.notifications],
             hasUnreadNotifications: true,
           }));
-          
-          // Update in Supabase
-          const { error } = await supabase
-            .from('notifications')
-            .insert(newNotification);
-          
-          if (error) throw error;
         } catch (error: any) {
           console.error('Error adding notification:', error.message);
           set({ error: error.message });
@@ -137,7 +101,7 @@ export const useNotificationStore = create<NotificationState>()(
         
       markAsRead: async (id) => {
         try {
-          // Update local state
+          // Update local state only
           set((state) => {
             const updatedNotifications = state.notifications.map((notification) =>
               notification.id === id ? { ...notification, read: true } : notification
@@ -148,14 +112,6 @@ export const useNotificationStore = create<NotificationState>()(
               hasUnreadNotifications: updatedNotifications.some(n => !n.read),
             };
           });
-          
-          // Update in Supabase
-          const { error } = await supabase
-            .from('notifications')
-            .update({ read: true })
-            .eq('id', id);
-          
-          if (error) throw error;
         } catch (error: any) {
           console.error('Error marking notification as read:', error.message);
           set({ error: error.message });
@@ -164,7 +120,7 @@ export const useNotificationStore = create<NotificationState>()(
         
       markAllAsRead: async () => {
         try {
-          // Update local state
+          // Update local state only
           set((state) => ({
             notifications: state.notifications.map((notification) => ({
               ...notification,
@@ -172,14 +128,6 @@ export const useNotificationStore = create<NotificationState>()(
             })),
             hasUnreadNotifications: false,
           }));
-          
-          // Update in Supabase
-          const { error } = await supabase
-            .from('notifications')
-            .update({ read: true })
-            .in('id', get().notifications.map(n => n.id));
-          
-          if (error) throw error;
         } catch (error: any) {
           console.error('Error marking all notifications as read:', error.message);
           set({ error: error.message });
@@ -188,7 +136,7 @@ export const useNotificationStore = create<NotificationState>()(
         
       deleteNotification: async (id) => {
         try {
-          // Update local state
+          // Update local state only
           set((state) => {
             const filteredNotifications = state.notifications.filter(
               (notification) => notification.id !== id
@@ -199,14 +147,6 @@ export const useNotificationStore = create<NotificationState>()(
               hasUnreadNotifications: filteredNotifications.some(n => !n.read),
             };
           });
-          
-          // Delete from Supabase
-          const { error } = await supabase
-            .from('notifications')
-            .delete()
-            .eq('id', id);
-          
-          if (error) throw error;
         } catch (error: any) {
           console.error('Error deleting notification:', error.message);
           set({ error: error.message });
@@ -215,19 +155,11 @@ export const useNotificationStore = create<NotificationState>()(
         
       clearAllNotifications: async () => {
         try {
-          // Update local state
+          // Update local state only
           set({
             notifications: [],
             hasUnreadNotifications: false,
           });
-          
-          // Delete all from Supabase
-          const { error } = await supabase
-            .from('notifications')
-            .delete()
-            .neq('id', '0'); // Delete all rows
-          
-          if (error) throw error;
         } catch (error: any) {
           console.error('Error clearing all notifications:', error.message);
           set({ error: error.message });
@@ -243,16 +175,13 @@ export const useNotificationStore = create<NotificationState>()(
 
 // Hook to initialize and sync with Supabase
 export const useNotificationSync = () => {
-  const { fetchNotifications, syncNotifications } = useNotificationStore();
+  const { fetchNotifications } = useNotificationStore();
 
   useEffect(() => {
     // Initial fetch
     fetchNotifications();
-
-    // Set up real-time sync
-    const unsubscribe = syncNotifications();
-
-    // Cleanup subscription on unmount
-    return unsubscribe;
-  }, [fetchNotifications, syncNotifications]);
+    
+    // No real-time sync needed since we're not using Supabase
+    return () => {};
+  }, [fetchNotifications]);
 };

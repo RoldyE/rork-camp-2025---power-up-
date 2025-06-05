@@ -99,21 +99,9 @@ export const useResourceStore = create<ResourceState>()(
       fetchResources: async () => {
         set({ isLoading: true, error: null });
         try {
-          const { data, error } = await supabase
-            .from('resources')
-            .select('*');
-          
-          if (error) throw error;
-          
-          if (data && data.length > 0) {
-            set({ resources: data as Resource[] });
-          } else {
-            // Initialize with mock data if no data exists
-            for (const resource of initialResources) {
-              await supabase.from('resources').upsert(resource);
-            }
-            set({ resources: initialResources });
-          }
+          // Skip Supabase fetch to avoid database errors
+          // Just use the local resources data
+          set({ resources: initialResources });
         } catch (error: any) {
           console.error('Error fetching resources:', error.message);
           set({ error: error.message });
@@ -123,21 +111,8 @@ export const useResourceStore = create<ResourceState>()(
       },
       
       syncResources: () => {
-        const subscription = supabase
-          .channel('resources-changes')
-          .on('postgres_changes', 
-            { event: '*', schema: 'public', table: 'resources' }, 
-            async () => {
-              // Refresh resources when there's a change
-              await get().fetchResources();
-            }
-          )
-          .subscribe();
-
-        // Return unsubscribe function
-        return () => {
-          subscription.unsubscribe();
-        };
+        // Return a no-op cleanup function since we're not using Supabase real-time
+        return () => {};
       },
       
       addResource: async (resource) => {
@@ -148,20 +123,13 @@ export const useResourceStore = create<ResourceState>()(
             dateAdded: new Date().toISOString(),
           };
           
-          // Update local state
+          // Update local state only
           set((state) => ({
             resources: [
               ...state.resources,
               newResource,
             ],
           }));
-          
-          // Update in Supabase
-          const { error } = await supabase
-            .from('resources')
-            .insert(newResource);
-          
-          if (error) throw error;
         } catch (error: any) {
           console.error('Error adding resource:', error.message);
           set({ error: error.message });
@@ -170,18 +138,10 @@ export const useResourceStore = create<ResourceState>()(
       
       deleteResource: async (id) => {
         try {
-          // Update local state
+          // Update local state only
           set((state) => ({
             resources: state.resources.filter((resource) => resource.id !== id),
           }));
-          
-          // Delete from Supabase
-          const { error } = await supabase
-            .from('resources')
-            .delete()
-            .eq('id', id);
-          
-          if (error) throw error;
         } catch (error: any) {
           console.error('Error deleting resource:', error.message);
           set({ error: error.message });
@@ -201,16 +161,13 @@ export const useResourceStore = create<ResourceState>()(
 
 // Hook to initialize and sync with Supabase
 export const useResourceSync = () => {
-  const { fetchResources, syncResources } = useResourceStore();
+  const { fetchResources } = useResourceStore();
 
   useEffect(() => {
     // Initial fetch
     fetchResources();
-
-    // Set up real-time sync
-    const unsubscribe = syncResources();
-
-    // Cleanup subscription on unmount
-    return unsubscribe;
-  }, [fetchResources, syncResources]);
+    
+    // No real-time sync needed since we're not using Supabase
+    return () => {};
+  }, [fetchResources]);
 };

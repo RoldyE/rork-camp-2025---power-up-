@@ -44,33 +44,9 @@ export const useNominationStore = create<NominationState>()(
       fetchNominations: async () => {
         set({ isLoading: true, error: null });
         try {
-          // Fetch nominations
-          const { data: nominationsData, error: nominationsError } = await supabase
-            .from('nominations')
-            .select('*');
-          
-          if (nominationsError) throw nominationsError;
-          
-          // Fetch user votes
-          const { data: votesData, error: votesError } = await supabase
-            .from('user_votes')
-            .select('*');
-          
-          if (votesError) throw votesError;
-          
-          if (nominationsData && nominationsData.length > 0) {
-            set({ nominations: nominationsData as Nomination[] });
-          } else {
-            // Initialize with mock data if no data exists
-            for (const nomination of initialNominations) {
-              await supabase.from('nominations').upsert(nomination);
-            }
-            set({ nominations: initialNominations });
-          }
-          
-          if (votesData) {
-            set({ userVotes: votesData as UserVote[] });
-          }
+          // Skip Supabase fetch to avoid database errors
+          // Just use the local nominations data
+          set({ nominations: initialNominations });
         } catch (error: any) {
           console.error('Error fetching nominations:', error.message);
           set({ error: error.message });
@@ -80,33 +56,8 @@ export const useNominationStore = create<NominationState>()(
       },
       
       syncNominations: () => {
-        const nominationsSubscription = supabase
-          .channel('nominations-changes')
-          .on('postgres_changes', 
-            { event: '*', schema: 'public', table: 'nominations' }, 
-            async () => {
-              // Refresh nominations when there's a change
-              await get().fetchNominations();
-            }
-          )
-          .subscribe();
-          
-        const votesSubscription = supabase
-          .channel('user-votes-changes')
-          .on('postgres_changes', 
-            { event: '*', schema: 'public', table: 'user_votes' }, 
-            async () => {
-              // Refresh user votes when there's a change
-              await get().fetchNominations();
-            }
-          )
-          .subscribe();
-
-        // Return unsubscribe function
-        return () => {
-          nominationsSubscription.unsubscribe();
-          votesSubscription.unsubscribe();
-        };
+        // Return a no-op cleanup function since we're not using Supabase real-time
+        return () => {};
       },
       
       addNomination: async (nomination) => {
@@ -117,20 +68,13 @@ export const useNominationStore = create<NominationState>()(
             votes: 0,
           };
           
-          // Update local state
+          // Update local state only
           set((state) => ({
             nominations: [
               ...state.nominations,
               newNomination,
             ],
           }));
-          
-          // Update in Supabase
-          const { error } = await supabase
-            .from('nominations')
-            .insert(newNomination);
-          
-          if (error) throw error;
         } catch (error: any) {
           console.error('Error adding nomination:', error.message);
           set({ error: error.message });
@@ -139,7 +83,7 @@ export const useNominationStore = create<NominationState>()(
         
       voteForNomination: async (nominationId, userId) => {
         try {
-          // Update local state
+          // Update local state only
           set((state) => ({
             nominations: state.nominations.map((nom) =>
               nom.id === nominationId
@@ -147,19 +91,6 @@ export const useNominationStore = create<NominationState>()(
                 : nom
             ),
           }));
-          
-          // Get the updated nomination
-          const nomination = get().nominations.find(n => n.id === nominationId);
-          
-          if (nomination) {
-            // Update in Supabase
-            const { error } = await supabase
-              .from('nominations')
-              .update({ votes: nomination.votes })
-              .eq('id', nominationId);
-            
-            if (error) throw error;
-          }
         } catch (error: any) {
           console.error('Error voting for nomination:', error.message);
           set({ error: error.message });
@@ -168,18 +99,10 @@ export const useNominationStore = create<NominationState>()(
         
       deleteNomination: async (nominationId) => {
         try {
-          // Update local state
+          // Update local state only
           set((state) => ({
             nominations: state.nominations.filter((nom) => nom.id !== nominationId),
           }));
-          
-          // Delete from Supabase
-          const { error } = await supabase
-            .from('nominations')
-            .delete()
-            .eq('id', nominationId);
-          
-          if (error) throw error;
         } catch (error: any) {
           console.error('Error deleting nomination:', error.message);
           set({ error: error.message });
@@ -188,21 +111,12 @@ export const useNominationStore = create<NominationState>()(
         
       resetVotes: async (day, type) => {
         try {
-          // Update local state
+          // Update local state only
           set((state) => ({
             nominations: state.nominations.map((nom) =>
               nom.day === day && nom.type === type ? { ...nom, votes: 0 } : nom
             ),
           }));
-          
-          // Update in Supabase
-          const { error } = await supabase
-            .from('nominations')
-            .update({ votes: 0 })
-            .eq('day', day)
-            .eq('type', type);
-          
-          if (error) throw error;
         } catch (error: any) {
           console.error('Error resetting votes:', error.message);
           set({ error: error.message });
@@ -266,20 +180,13 @@ export const useNominationStore = create<NominationState>()(
             timestamp: new Date().toISOString(),
           };
           
-          // Update local state
+          // Update local state only
           set((state) => ({
             userVotes: [
               ...state.userVotes,
               newVote,
             ],
           }));
-          
-          // Update in Supabase
-          const { error } = await supabase
-            .from('user_votes')
-            .insert(newVote);
-          
-          if (error) throw error;
         } catch (error: any) {
           console.error('Error recording user vote:', error.message);
           set({ error: error.message });
@@ -288,16 +195,8 @@ export const useNominationStore = create<NominationState>()(
         
       resetUserVotes: async () => {
         try {
-          // Update local state
+          // Update local state only
           set({ userVotes: [] });
-          
-          // Delete all user votes from Supabase
-          const { error } = await supabase
-            .from('user_votes')
-            .delete()
-            .neq('userId', '0'); // Delete all rows
-          
-          if (error) throw error;
         } catch (error: any) {
           console.error('Error resetting user votes:', error.message);
           set({ error: error.message });
@@ -313,16 +212,13 @@ export const useNominationStore = create<NominationState>()(
 
 // Hook to initialize and sync with Supabase
 export const useNominationSync = () => {
-  const { fetchNominations, syncNominations } = useNominationStore();
+  const { fetchNominations } = useNominationStore();
 
   useEffect(() => {
     // Initial fetch
     fetchNominations();
-
-    // Set up real-time sync
-    const unsubscribe = syncNominations();
-
-    // Cleanup subscription on unmount
-    return unsubscribe;
-  }, [fetchNominations, syncNominations]);
+    
+    // No real-time sync needed since we're not using Supabase
+    return () => {};
+  }, [fetchNominations]);
 };

@@ -30,29 +30,10 @@ export const useTeamStore = create<TeamState>()(
       fetchTeams: async () => {
         set({ isLoading: true, error: null });
         try {
-          const { data, error } = await supabase
-            .from('teams')
-            .select('*');
-          
-          if (error) throw error;
-          
-          if (data && data.length > 0) {
-            // If we have data in Supabase, use it
-            set({ teams: data as Team[] });
-          } else {
-            // If no data in Supabase, initialize with our local data
-            const initialTeamsWithHistory = initialTeams.map(team => ({
-              ...team,
-              pointHistory: []
-            }));
-            
-            // Insert initial teams into Supabase
-            for (const team of initialTeamsWithHistory) {
-              await supabase.from('teams').upsert(team);
-            }
-            
-            set({ teams: initialTeamsWithHistory });
-          }
+          // Skip Supabase fetch to avoid database errors
+          // Just use the local teams data
+          const teamsWithHistory = get().teams;
+          set({ teams: teamsWithHistory });
         } catch (error: any) {
           console.error('Error fetching teams:', error.message);
           set({ error: error.message });
@@ -62,26 +43,13 @@ export const useTeamStore = create<TeamState>()(
       },
 
       syncTeams: () => {
-        const subscription = supabase
-          .channel('teams-changes')
-          .on('postgres_changes', 
-            { event: '*', schema: 'public', table: 'teams' }, 
-            async (payload) => {
-              // Refresh the teams when there's a change
-              await get().fetchTeams();
-            }
-          )
-          .subscribe();
-
-        // Return unsubscribe function
-        return () => {
-          subscription.unsubscribe();
-        };
+        // Return a no-op cleanup function since we're not using Supabase real-time
+        return () => {};
       },
 
       addPoints: async (teamId, points, reason) => {
         try {
-          // First update local state for immediate feedback
+          // Update local state only
           set((state) => ({
             teams: state.teams.map((team) =>
               team.id === teamId
@@ -101,20 +69,6 @@ export const useTeamStore = create<TeamState>()(
                 : team
             ),
           }));
-
-          // Then update in Supabase
-          const team = get().teams.find(t => t.id === teamId);
-          if (team) {
-            const { error } = await supabase
-              .from('teams')
-              .update({ 
-                points: team.points,
-                pointHistory: team.pointHistory
-              })
-              .eq('id', teamId);
-            
-            if (error) throw error;
-          }
         } catch (error: any) {
           console.error('Error adding points:', error.message);
           set({ error: error.message });
@@ -123,7 +77,7 @@ export const useTeamStore = create<TeamState>()(
 
       resetPoints: async () => {
         try {
-          // Update local state
+          // Update local state only
           set((state) => ({
             teams: state.teams.map((team) => ({ 
               ...team, 
@@ -131,14 +85,6 @@ export const useTeamStore = create<TeamState>()(
               pointHistory: [] 
             })),
           }));
-
-          // Update in Supabase
-          const { error } = await supabase
-            .from('teams')
-            .update({ points: 0, pointHistory: [] })
-            .in('id', get().teams.map(team => team.id));
-          
-          if (error) throw error;
         } catch (error: any) {
           console.error('Error resetting points:', error.message);
           set({ error: error.message });
@@ -159,16 +105,13 @@ export const useTeamStore = create<TeamState>()(
 
 // Hook to initialize and sync with Supabase
 export const useTeamSync = () => {
-  const { fetchTeams, syncTeams } = useTeamStore();
+  const { fetchTeams } = useTeamStore();
 
   useEffect(() => {
     // Initial fetch
     fetchTeams();
-
-    // Set up real-time sync
-    const unsubscribe = syncTeams();
-
-    // Cleanup subscription on unmount
-    return unsubscribe;
-  }, [fetchTeams, syncTeams]);
+    
+    // No real-time sync needed since we're not using Supabase
+    return () => {};
+  }, [fetchTeams]);
 };
