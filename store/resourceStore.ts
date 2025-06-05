@@ -2,18 +2,12 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Resource } from "@/types";
-import { supabase } from "@/lib/supabase";
-import { useEffect } from "react";
 
 interface ResourceState {
   resources: Resource[];
-  isLoading: boolean;
-  error: string | null;
-  addResource: (resource: Omit<Resource, "id" | "dateAdded">) => Promise<void>;
-  deleteResource: (id: string) => Promise<void>;
+  addResource: (resource: Omit<Resource, "id" | "dateAdded">) => void;
+  deleteResource: (id: string) => void;
   getResourcesByCategory: (category: Resource["category"]) => Resource[];
-  fetchResources: () => Promise<void>;
-  syncResources: () => () => void;
 }
 
 const initialResources: Resource[] = [
@@ -93,61 +87,21 @@ export const useResourceStore = create<ResourceState>()(
   persist(
     (set, get) => ({
       resources: initialResources,
-      isLoading: false,
-      error: null,
-      
-      fetchResources: async () => {
-        set({ isLoading: true, error: null });
-        try {
-          // Skip Supabase fetch to avoid database errors
-          // Just use the local resources data
-          set({ resources: initialResources });
-        } catch (error: any) {
-          console.error('Error fetching resources:', error.message);
-          set({ error: error.message });
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-      
-      syncResources: () => {
-        // Return a no-op cleanup function since we're not using Supabase real-time
-        return () => {};
-      },
-      
-      addResource: async (resource) => {
-        try {
-          const newResource = {
-            ...resource,
-            id: Date.now().toString(),
-            dateAdded: new Date().toISOString(),
-          };
-          
-          // Update local state only
-          set((state) => ({
-            resources: [
-              ...state.resources,
-              newResource,
-            ],
-          }));
-        } catch (error: any) {
-          console.error('Error adding resource:', error.message);
-          set({ error: error.message });
-        }
-      },
-      
-      deleteResource: async (id) => {
-        try {
-          // Update local state only
-          set((state) => ({
-            resources: state.resources.filter((resource) => resource.id !== id),
-          }));
-        } catch (error: any) {
-          console.error('Error deleting resource:', error.message);
-          set({ error: error.message });
-        }
-      },
-      
+      addResource: (resource) =>
+        set((state) => ({
+          resources: [
+            ...state.resources,
+            {
+              ...resource,
+              id: Date.now().toString(),
+              dateAdded: new Date().toISOString(),
+            },
+          ],
+        })),
+      deleteResource: (id) =>
+        set((state) => ({
+          resources: state.resources.filter((resource) => resource.id !== id),
+        })),
       getResourcesByCategory: (category) => {
         return get().resources.filter((resource) => resource.category === category);
       },
@@ -158,16 +112,3 @@ export const useResourceStore = create<ResourceState>()(
     }
   )
 );
-
-// Hook to initialize and sync with Supabase
-export const useResourceSync = () => {
-  const { fetchResources } = useResourceStore();
-
-  useEffect(() => {
-    // Initial fetch
-    fetchResources();
-    
-    // No real-time sync needed since we're not using Supabase
-    return () => {};
-  }, [fetchResources]);
-};

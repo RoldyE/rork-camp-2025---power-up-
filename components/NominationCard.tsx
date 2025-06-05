@@ -26,11 +26,8 @@ export const NominationCard = ({ nomination, onDelete }: NominationCardProps) =>
   const typeColor = getNominationTypeColor(nomination.type);
   const typeLabel = getNominationTypeLabel(nomination.type);
   
-  const handleVote = async () => {
-    if (!userProfile) {
-      Alert.alert("Login Required", "Please log in to vote for nominations");
-      return;
-    }
+  const handleVote = () => {
+    if (!userProfile) return;
     
     // Check if user has already voted for this nomination type
     const hasVoted = hasUserVoted(userProfile.id, nomination.type);
@@ -41,13 +38,8 @@ export const NominationCard = ({ nomination, onDelete }: NominationCardProps) =>
     }
     
     // Record the vote
-    try {
-      await voteForNomination(nomination.id, userProfile.id);
-      await recordUserVote(userProfile.id, nomination.type, nomination.day);
-      Alert.alert("Vote Recorded", "Your vote has been recorded successfully");
-    } catch (error) {
-      Alert.alert("Error", "Failed to record your vote. Please try again.");
-    }
+    voteForNomination(nomination.id);
+    recordUserVote(userProfile.id, nomination.type, nomination.day);
   };
   
   const handleDelete = () => {
@@ -58,13 +50,9 @@ export const NominationCard = ({ nomination, onDelete }: NominationCardProps) =>
         { text: "Cancel", style: "cancel" },
         { 
           text: "Delete", 
-          onPress: async () => {
-            try {
-              await deleteNomination(nomination.id);
-              if (onDelete) onDelete();
-            } catch (error) {
-              Alert.alert("Error", "Failed to delete nomination. Please try again.");
-            }
+          onPress: () => {
+            deleteNomination(nomination.id);
+            if (onDelete) onDelete();
           },
           style: "destructive" 
         }

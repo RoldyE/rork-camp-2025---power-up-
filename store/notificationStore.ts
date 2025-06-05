@@ -2,21 +2,15 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Notification } from "@/types";
-import { supabase } from "@/lib/supabase";
-import { useEffect } from "react";
 
 interface NotificationState {
   notifications: Notification[];
   hasUnreadNotifications: boolean;
-  isLoading: boolean;
-  error: string | null;
-  addNotification: (notification: Omit<Notification, "id" | "timestamp" | "read">) => Promise<void>;
-  markAsRead: (id: string) => Promise<void>;
-  markAllAsRead: () => Promise<void>;
-  deleteNotification: (id: string) => Promise<void>;
-  clearAllNotifications: () => Promise<void>;
-  fetchNotifications: () => Promise<void>;
-  syncNotifications: () => () => void;
+  addNotification: (notification: Omit<Notification, "id" | "timestamp" | "read">) => void;
+  markAsRead: (id: string) => void;
+  markAllAsRead: () => void;
+  deleteNotification: (id: string) => void;
+  clearAllNotifications: () => void;
 }
 
 // Initial notifications for demo purposes
@@ -54,33 +48,9 @@ export const useNotificationStore = create<NotificationState>()(
     (set, get) => ({
       notifications: initialNotifications,
       hasUnreadNotifications: initialNotifications.some(n => !n.read),
-      isLoading: false,
-      error: null,
       
-      fetchNotifications: async () => {
-        set({ isLoading: true, error: null });
-        try {
-          // Skip Supabase fetch to avoid database errors
-          // Just use the local notifications data
-          set({ 
-            notifications: initialNotifications,
-            hasUnreadNotifications: initialNotifications.some(n => !n.read)
-          });
-        } catch (error: any) {
-          console.error('Error fetching notifications:', error.message);
-          set({ error: error.message });
-        } finally {
-          set({ isLoading: false });
-        }
-      },
-      
-      syncNotifications: () => {
-        // Return a no-op cleanup function since we're not using Supabase real-time
-        return () => {};
-      },
-      
-      addNotification: async (notification) => {
-        try {
+      addNotification: (notification) =>
+        set((state) => {
           const newNotification = {
             ...notification,
             id: Date.now().toString(),
@@ -88,83 +58,50 @@ export const useNotificationStore = create<NotificationState>()(
             read: false,
           };
           
-          // Update local state only
-          set((state) => ({
+          return {
             notifications: [newNotification, ...state.notifications],
             hasUnreadNotifications: true,
-          }));
-        } catch (error: any) {
-          console.error('Error adding notification:', error.message);
-          set({ error: error.message });
-        }
-      },
+          };
+        }),
         
-      markAsRead: async (id) => {
-        try {
-          // Update local state only
-          set((state) => {
-            const updatedNotifications = state.notifications.map((notification) =>
-              notification.id === id ? { ...notification, read: true } : notification
-            );
-            
-            return {
-              notifications: updatedNotifications,
-              hasUnreadNotifications: updatedNotifications.some(n => !n.read),
-            };
-          });
-        } catch (error: any) {
-          console.error('Error marking notification as read:', error.message);
-          set({ error: error.message });
-        }
-      },
+      markAsRead: (id) =>
+        set((state) => {
+          const updatedNotifications = state.notifications.map((notification) =>
+            notification.id === id ? { ...notification, read: true } : notification
+          );
+          
+          return {
+            notifications: updatedNotifications,
+            hasUnreadNotifications: updatedNotifications.some(n => !n.read),
+          };
+        }),
         
-      markAllAsRead: async () => {
-        try {
-          // Update local state only
-          set((state) => ({
-            notifications: state.notifications.map((notification) => ({
-              ...notification,
-              read: true,
-            })),
-            hasUnreadNotifications: false,
-          }));
-        } catch (error: any) {
-          console.error('Error marking all notifications as read:', error.message);
-          set({ error: error.message });
-        }
-      },
+      markAllAsRead: () =>
+        set((state) => ({
+          notifications: state.notifications.map((notification) => ({
+            ...notification,
+            read: true,
+          })),
+          hasUnreadNotifications: false,
+        })),
         
-      deleteNotification: async (id) => {
-        try {
-          // Update local state only
-          set((state) => {
-            const filteredNotifications = state.notifications.filter(
-              (notification) => notification.id !== id
-            );
-            
-            return {
-              notifications: filteredNotifications,
-              hasUnreadNotifications: filteredNotifications.some(n => !n.read),
-            };
-          });
-        } catch (error: any) {
-          console.error('Error deleting notification:', error.message);
-          set({ error: error.message });
-        }
-      },
+      deleteNotification: (id) =>
+        set((state) => {
+          const filteredNotifications = state.notifications.filter(
+            (notification) => notification.id !== id
+          );
+          
+          return {
+            notifications: filteredNotifications,
+            hasUnreadNotifications: filteredNotifications.some(n => !n.read),
+          };
+        }),
         
-      clearAllNotifications: async () => {
-        try {
-          // Update local state only
-          set({
-            notifications: [],
-            hasUnreadNotifications: false,
-          });
-        } catch (error: any) {
-          console.error('Error clearing all notifications:', error.message);
-          set({ error: error.message });
-        }
-      },
+      clearAllNotifications: () =>
+        set({
+          notifications: [],
+          hasUnreadNotifications: false,
+        }),
     }),
     {
       name: "notification-storage",
@@ -172,16 +109,3 @@ export const useNotificationStore = create<NotificationState>()(
     }
   )
 );
-
-// Hook to initialize and sync with Supabase
-export const useNotificationSync = () => {
-  const { fetchNotifications } = useNotificationStore();
-
-  useEffect(() => {
-    // Initial fetch
-    fetchNotifications();
-    
-    // No real-time sync needed since we're not using Supabase
-    return () => {};
-  }, [fetchNotifications]);
-};
