@@ -86,9 +86,10 @@ export const useNominationStore = create<NominationState>()(
       },
       
       hasUserVoted: (userId, nominationType) => {
+        const today = new Date().toLocaleDateString();
+        
         // For daily nominations, check if user has voted 2 times for the current day
         if (nominationType === "daily") {
-          const today = new Date().toLocaleDateString();
           const dailyVotes = get().userVotes.filter(
             vote => vote.userId === userId && 
                    vote.nominationType === nominationType &&
@@ -111,10 +112,13 @@ export const useNominationStore = create<NominationState>()(
           ).length;
         }
         
+        const today = new Date().toLocaleDateString();
         return get().userVotes.filter(
           vote => vote.userId === userId && 
                  vote.nominationType === nominationType &&
-                 vote.day === day
+                 (day === "today" 
+                  ? new Date(vote.timestamp).toLocaleDateString() === today
+                  : vote.day === day)
         ).length;
       },
       

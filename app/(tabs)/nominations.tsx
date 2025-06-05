@@ -25,7 +25,7 @@ export default function NominationsScreen() {
   
   // Get user vote count for the selected day and type
   const voteCount = userProfile 
-    ? getUserVoteCount(userProfile.id, selectedType, selectedDay)
+    ? getUserVoteCount(userProfile.id, selectedType, selectedType === "daily" ? selectedDay : "all")
     : 0;
   
   const handleResetVotes = () => {
@@ -75,10 +75,10 @@ export default function NominationsScreen() {
         )}
       </View>
       
-      {userProfile && selectedType === "daily" && (
+      {userProfile && (
         <View style={styles.voteCountContainer}>
           <Text style={styles.voteCountText}>
-            You have used {voteCount}/2 votes for {selectedDay}
+            You have used {voteCount}/2 votes for {selectedType === "daily" ? selectedDay : "this category"}
           </Text>
         </View>
       )}
