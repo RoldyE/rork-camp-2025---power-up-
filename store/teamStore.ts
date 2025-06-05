@@ -44,9 +44,11 @@ export const useTeamStore = create<TeamState>()(
           // Try to update in Supabase
           try {
             // Add to point history
+            const pointId = Date.now().toString();
             supabase
               .from('point_history')
               .insert([{
+                id: pointId,
                 teamid: teamId,
                 points: points,
                 reason: reason,

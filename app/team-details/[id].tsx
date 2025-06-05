@@ -8,11 +8,12 @@ import { CamperCard } from "@/components/CamperCard";
 import { PointHistoryCard } from "@/components/PointHistoryCard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabaseClient";
+import { RotateCcw } from "lucide-react-native";
 
 export default function TeamDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { teams, addPoints, getPointHistory } = useTeamStore();
+  const { teams, addPoints, getPointHistory, resetPoints } = useTeamStore();
   const [pointsToAdd, setPointsToAdd] = useState("");
   const [reason, setReason] = useState("");
   const [activeTab, setActiveTab] = useState<"members" | "history">("members");
@@ -138,6 +139,25 @@ export default function TeamDetailsScreen() {
     }
     
     Alert.alert("Success", `${points} points added to ${team.name}`);
+  };
+
+  const handleResetPoints = () => {
+    Alert.alert(
+      "Reset Team Points",
+      `Are you sure you want to reset ${team.name}'s points to zero?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Reset", 
+          onPress: () => {
+            // Reset points for this team only
+            resetPoints();
+            Alert.alert("Success", `${team.name}'s points have been reset to zero.`);
+          },
+          style: "destructive" 
+        }
+      ]
+    );
   };
   
   return (
@@ -277,6 +297,14 @@ export default function TeamDetailsScreen() {
           }
         />
       )}
+
+      {/* Reset button for this team only */}
+      <Pressable 
+        style={styles.resetButton}
+        onPress={handleResetPoints}
+      >
+        <RotateCcw size={16} color="white" />
+      </Pressable>
     </SafeAreaView>
   );
 }
@@ -427,5 +455,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textLight,
     textAlign: "center",
+  },
+  resetButton: {
+    position: "absolute",
+    bottom: 24,
+    right: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.error,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
 });

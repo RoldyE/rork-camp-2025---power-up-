@@ -36,9 +36,10 @@ export const useNominationStore = create<NominationState>()(
       userVotes: [],
       
       addNomination: async (nomination) => {
+        const newId = Date.now().toString();
         const newNomination = {
           ...nomination,
-          id: Date.now().toString(),
+          id: newId,
           votes: 0,
         };
         
@@ -54,6 +55,7 @@ export const useNominationStore = create<NominationState>()(
           supabase
             .from('nominations')
             .insert([{
+              id: newId,
               camperid: nomination.camperId,
               reason: nomination.reason,
               votes: 0,
@@ -94,9 +96,11 @@ export const useNominationStore = create<NominationState>()(
               });
             
             // Record the vote
+            const voteId = Date.now().toString();
             supabase
               .from('user_votes')
               .insert([{
+                id: voteId,
                 userid: userId,
                 nominationid: nominationId,
                 nominationtype: nomination.type,
@@ -232,9 +236,11 @@ export const useNominationStore = create<NominationState>()(
         
         // Try to record in Supabase
         try {
+          const voteId = Date.now().toString();
           supabase
             .from('user_votes')
             .insert([{
+              id: voteId,
               userid: userId,
               nominationtype: nominationType,
               day: day,
