@@ -2,47 +2,36 @@ import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { nominations } from "../addNomination/route";
 import { userVotes } from "../voteForNomination/route";
+import { NominationType } from "@/types";
 
 export default publicProcedure
   .input(
     z.object({
-      day: z.string().optional(),
-      type: z.string().optional(),
+      day: z.string(),
+      type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]),
     })
   )
   .mutation(({ input }) => {
     const { day, type } = input;
     
-    // Reset votes for nominations matching the criteria
+    // Reset votes for nominations of the specified day and type
     nominations.forEach((nom, index) => {
-      if ((!day || nom.day === day) && (!type || nom.type === type)) {
+      if (nom.day === day && nom.type === type) {
         nominations[index] = {
           ...nom,
-          votes: 0,
+          votes: 0
         };
       }
     });
     
-    // Reset user votes if requested
-    if (day || type) {
-      // Filter out votes that match the criteria
-      const filteredVotes = userVotes.filter(vote => {
-        if (day && type) {
-          return !(vote.day === day && vote.nominationType === type);
-        }
-        if (day) {
-          return vote.day !== day;
-        }
-        if (type) {
-          return vote.nominationType !== type;
-        }
-        return true;
-      });
-      
-      // Clear the array and add back the filtered votes
-      userVotes.length = 0;
-      filteredVotes.forEach(vote => userVotes.push(vote));
-    }
+    // Remove user votes for this day and type
+    const filteredVotes = userVotes.filter(
+      vote => !(vote.day === day && vote.nominationType === type)
+    );
+    
+    // Clear the array and add back the filtered votes
+    userVotes.length = 0;
+    userVotes.push(...filteredVotes);
     
     return {
       success: true,

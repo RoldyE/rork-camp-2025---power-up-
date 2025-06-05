@@ -1,29 +1,43 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, Pressable, Alert, ScrollView, ActivityIndicator } from "react-native";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { colors } from "@/constants/colors";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { campers } from "@/mocks/campers";
-import { NominationType } from "@/types";
+import { CamperCard } from "@/components/CamperCard";
 import { useNominationStore } from "@/store/nominationStore";
-import { NominationTypeSelector, getNominationTypeLabel } from "@/components/NominationTypeSelector";
+import { NominationType } from "@/types";
 import { DaySelector } from "@/components/DaySelector";
+import { NominationTypeSelector, getNominationTypeLabel } from "@/components/NominationTypeSelector";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AddNominationScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ type?: string, day?: string }>();
+  const params = useLocalSearchParams<{ type?: NominationType, day?: string }>();
   
+  // Use params if provided, otherwise default values
   const [selectedType, setSelectedType] = useState<NominationType>(
-    params.type && ["daily", "sportsmanship", "bravery", "service", "scholar", "other"].includes(params.type)
+    params.type && ["daily", "sportsmanship", "bravery", "service", "scholar", "other"].includes(params.type as string)
       ? params.type as NominationType
       : "daily"
   );
   
   const [selectedDay, setSelectedDay] = useState(params.day || "Tuesday");
-  const [selectedCamperId, setSelectedCamperId] = useState("");
+  const [selectedCamperId, setSelectedCamperId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   
   const { addNomination, isLoading } = useNominationStore();
+  
+  // Filter campers based on search query
+  const filteredCampers = campers.filter(
+    (camper) =>
+      camper.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      camper.teamId.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const handleSelectCamper = (camperId: string) => {
+    setSelectedCamperId(camperId);
+  };
   
   const handleSubmit = async () => {
     if (!selectedCamperId) {
@@ -45,11 +59,11 @@ export default function AddNominationScreen() {
       });
       
       Alert.alert(
-        "Success", 
+        "Success",
         "Nomination added successfully",
         [
-          { 
-            text: "OK", 
+          {
+            text: "OK",
             onPress: () => {
               if (selectedType === "daily") {
                 router.push({
@@ -62,8 +76,8 @@ export default function AddNominationScreen() {
                   params: { type: selectedType }
                 });
               }
-            }
-          }
+            },
+          },
         ]
       );
     } catch (error) {
@@ -76,12 +90,18 @@ export default function AddNominationScreen() {
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <Stack.Screen 
         options={{ 
-          title: `Add ${getNominationTypeLabel(selectedType)} Nomination`,
+          title: "Add Nomination",
           headerStyle: {
             backgroundColor: colors.background,
           },
         }} 
       />
+      
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.section}>
@@ -94,7 +114,7 @@ export default function AddNominationScreen() {
         
         {selectedType === "daily" && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Day</Text>
+            <Text style={styles.sectionTitle}>Select Day</Text>
             <DaySelector
               selectedDay={selectedDay}
               onSelectDay={setSelectedDay}
@@ -104,48 +124,44 @@ export default function AddNominationScreen() {
         
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Select Camper</Text>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.camperList}
-          >
-            {campers.map((camper) => (
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search campers by name or team"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          
+          <View style={styles.campersContainer}>
+            {filteredCampers.map((camper) => (
               <Pressable
                 key={camper.id}
+                onPress={() => handleSelectCamper(camper.id)}
                 style={[
-                  styles.camperCard,
+                  styles.camperCardContainer,
                   selectedCamperId === camper.id && styles.selectedCamperCard,
                 ]}
-                onPress={() => setSelectedCamperId(camper.id)}
               >
-                <Text style={styles.camperName}>{camper.name}</Text>
+                <CamperCard camper={camper} />
               </Pressable>
             ))}
-          </ScrollView>
+          </View>
         </View>
         
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Reason for Nomination</Text>
           <TextInput
             style={styles.reasonInput}
+            placeholder={`Why does this camper deserve the ${getNominationTypeLabel(selectedType)} nomination?`}
             value={reason}
             onChangeText={setReason}
-            placeholder="Why does this camper deserve recognition?"
             multiline
             numberOfLines={4}
+            textAlignVertical="top"
           />
         </View>
         
-        <Pressable 
-          style={styles.submitButton}
-          onPress={handleSubmit}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={styles.submitButtonText}>Submit Nomination</Text>
-          )}
+        <Pressable style={styles.submitButton} onPress={handleSubmit}>
+          <Text style={styles.submitButtonText}>Submit Nomination</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -156,6 +172,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    zIndex: 10,
   },
   scrollContent: {
     padding: 16,
@@ -170,43 +197,41 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 12,
   },
-  camperList: {
-    flexDirection: "row",
-    flexWrap: "nowrap",
+  searchInput: {
+    height: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    backgroundColor: colors.card,
+  },
+  campersContainer: {
     gap: 8,
   },
-  camperCard: {
-    backgroundColor: colors.card,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  camperCardContainer: {
     borderRadius: 8,
-    minWidth: 100,
-    alignItems: "center",
     borderWidth: 2,
     borderColor: "transparent",
   },
   selectedCamperCard: {
     borderColor: colors.primary,
   },
-  camperName: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: colors.text,
-  },
   reasonInput: {
-    backgroundColor: colors.card,
-    borderRadius: 8,
-    padding: 12,
     height: 120,
-    textAlignVertical: "top",
     borderWidth: 1,
     borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    backgroundColor: colors.card,
   },
   submitButton: {
     backgroundColor: colors.primary,
+    height: 50,
     borderRadius: 8,
-    paddingVertical: 16,
     alignItems: "center",
+    justifyContent: "center",
     marginTop: 16,
   },
   submitButtonText: {
