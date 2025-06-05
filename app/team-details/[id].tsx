@@ -1,0 +1,366 @@
+import React, { useState } from "react";
+import { View, Text, StyleSheet, Pressable, TextInput, Alert, FlatList, ScrollView } from "react-native";
+import { useLocalSearchParams, Stack, useRouter } from "expo-router";
+import { colors } from "@/constants/colors";
+import { useTeamStore } from "@/store/teamStore";
+import { campers } from "@/mocks/campers";
+import { CamperCard } from "@/components/CamperCard";
+import { PointHistoryCard } from "@/components/PointHistoryCard";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ChevronDown, ChevronUp } from "lucide-react-native";
+
+export default function TeamDetailsScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const { teams, addPoints, getPointHistory } = useTeamStore();
+  const [pointsToAdd, setPointsToAdd] = useState("");
+  const [reason, setReason] = useState("");
+  const [activeTab, setActiveTab] = useState<"members" | "history">("members");
+  const [expandedTeam, setExpandedTeam] = useState(true);
+  
+  const team = teams.find((t) => t.id === id);
+  const teamCampers = campers.filter((c) => c.teamId === id);
+  const pointHistory = getPointHistory(id || "");
+  
+  if (!team) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text>Team not found</Text>
+      </SafeAreaView>
+    );
+  }
+  
+  const handleAddPoints = () => {
+    const points = parseInt(pointsToAdd);
+    if (isNaN(points)) {
+      Alert.alert("Invalid Input", "Please enter a valid number");
+      return;
+    }
+    
+    if (!reason.trim()) {
+      Alert.alert("Missing Reason", "Please enter a reason for adding points");
+      return;
+    }
+    
+    addPoints(team.id, points, reason.trim());
+    setPointsToAdd("");
+    setReason("");
+    Alert.alert("Points Added", `${points} points added to ${team.name}`);
+  };
+
+  const handleQuickAddPoints = (points: number) => {
+    // Use Alert.alert instead of Alert.prompt for cross-platform compatibility
+    const defaultReason = `Quick add ${points} points`;
+    addPoints(team.id, points, defaultReason);
+    Alert.alert("Success", `${points} points added to ${team.name}`);
+  };
+  
+  return (
+    <SafeAreaView style={styles.container} edges={["bottom"]}>
+      <Stack.Screen 
+        options={{ 
+          title: team.name,
+          headerStyle: {
+            backgroundColor: team.color + "20",
+          },
+        }} 
+      />
+      
+      <View style={[styles.header, { backgroundColor: team.color + "20" }]}>
+        <Text style={styles.teamName}>{team.name}</Text>
+        <View style={styles.pointsContainer}>
+          <Text style={styles.pointsLabel}>Total Points</Text>
+          <Text style={styles.pointsValue}>{team.points}</Text>
+        </View>
+      </View>
+      
+      <View style={styles.quickPointsContainer}>
+        <Text style={styles.quickPointsLabel}>Quick Add Points:</Text>
+        <View style={styles.quickButtonsRow}>
+          <Pressable 
+            style={[styles.quickButton, { backgroundColor: team.color + "80" }]} 
+            onPress={() => handleQuickAddPoints(1)}
+          >
+            <Text style={styles.quickButtonText}>+1</Text>
+          </Pressable>
+          <Pressable 
+            style={[styles.quickButton, { backgroundColor: team.color + "80" }]} 
+            onPress={() => handleQuickAddPoints(2)}
+          >
+            <Text style={styles.quickButtonText}>+2</Text>
+          </Pressable>
+          <Pressable 
+            style={[styles.quickButton, { backgroundColor: team.color + "80" }]} 
+            onPress={() => handleQuickAddPoints(5)}
+          >
+            <Text style={styles.quickButtonText}>+5</Text>
+          </Pressable>
+          <Pressable 
+            style={[styles.quickButton, { backgroundColor: team.color + "80" }]} 
+            onPress={() => handleQuickAddPoints(10)}
+          >
+            <Text style={styles.quickButtonText}>+10</Text>
+          </Pressable>
+        </View>
+      </View>
+      
+      <View style={styles.addPointsContainer}>
+        <Text style={styles.sectionTitle}>Custom Points</Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.pointsInput}
+            value={pointsToAdd}
+            onChangeText={setPointsToAdd}
+            placeholder="Points"
+            keyboardType="number-pad"
+          />
+          <TextInput
+            style={styles.reasonInput}
+            value={reason}
+            onChangeText={setReason}
+            placeholder="Reason for points"
+          />
+        </View>
+        <Pressable 
+          style={[styles.addButton, { backgroundColor: team.color }]}
+          onPress={handleAddPoints}
+        >
+          <Text style={styles.addButtonText}>Add Points</Text>
+        </Pressable>
+      </View>
+      
+      <View style={styles.tabContainer}>
+        <Pressable
+          style={[
+            styles.tabButton,
+            activeTab === "members" && styles.activeTabButton,
+          ]}
+          onPress={() => setActiveTab("members")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "members" && styles.activeTabText,
+            ]}
+          >
+            Team Members
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[
+            styles.tabButton,
+            activeTab === "history" && styles.activeTabButton,
+          ]}
+          onPress={() => setActiveTab("history")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "history" && styles.activeTabText,
+            ]}
+          >
+            Point History
+          </Text>
+        </Pressable>
+      </View>
+      
+      {activeTab === "members" ? (
+        <ScrollView style={styles.contentContainer}>
+          <Pressable 
+            style={styles.teamHeader}
+            onPress={() => setExpandedTeam(!expandedTeam)}
+          >
+            <Text style={styles.teamHeaderText}>Team Members</Text>
+            {expandedTeam ? (
+              <ChevronUp size={20} color={colors.text} />
+            ) : (
+              <ChevronDown size={20} color={colors.text} />
+            )}
+          </Pressable>
+          
+          {expandedTeam && teamCampers.map((camper) => (
+            <CamperCard key={camper.id} camper={camper} />
+          ))}
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={pointHistory}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <PointHistoryCard entry={item} />}
+          contentContainerStyle={styles.contentContainer}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No point history yet</Text>
+              <Text style={styles.emptySubtext}>
+                Points added to this team will appear here
+              </Text>
+            </View>
+          }
+        />
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    padding: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  teamName: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  pointsContainer: {
+    alignItems: "center",
+  },
+  pointsLabel: {
+    fontSize: 14,
+    color: colors.textLight,
+  },
+  pointsValue: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  quickPointsContainer: {
+    padding: 16,
+    backgroundColor: colors.card,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+  },
+  quickPointsLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 8,
+  },
+  quickButtonsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  quickButton: {
+    flex: 1,
+    height: 40,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 4,
+  },
+  quickButtonText: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  addPointsContainer: {
+    padding: 16,
+    backgroundColor: colors.card,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 12,
+  },
+  inputRow: {
+    flexDirection: "row",
+    marginBottom: 12,
+    gap: 8,
+  },
+  pointsInput: {
+    width: 80,
+    height: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: colors.background,
+  },
+  reasonInput: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: colors.background,
+  },
+  addButton: {
+    height: 48,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addButtonText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  tabContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  activeTabButton: {
+    borderBottomColor: colors.primary,
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: colors.textLight,
+  },
+  activeTabText: {
+    color: colors.primary,
+  },
+  contentContainer: {
+    padding: 16,
+  },
+  teamHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    marginBottom: 12,
+  },
+  teamHeaderText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.text,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: colors.textLight,
+    textAlign: "center",
+  },
+});
