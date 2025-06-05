@@ -4,7 +4,8 @@ import { teams as initialTeams } from "@/mocks/teams";
 import { PointEntry, Team } from "@/types";
 
 // In-memory database for teams and point history
-let teams: (Team & { pointHistory: PointEntry[] })[] = [...initialTeams.map(team => ({
+// This needs to be exported so other routes can access the same reference
+export let teams: (Team & { pointHistory: PointEntry[] })[] = [...initialTeams.map(team => ({
   ...team,
   pointHistory: [] as PointEntry[]
 }))];

@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { nominations as initialNominations } from "@/mocks/nominations";
-import { NominationType } from "@/types";
+import { NominationType, Nomination } from "@/types";
 
 // In-memory database for nominations
-let nominations = [...initialNominations];
+// Export this so other routes can access the same reference
+export let nominations: Nomination[] = [...initialNominations];
 
 export default publicProcedure
   .input(
@@ -18,8 +19,8 @@ export default publicProcedure
   .mutation(({ input }) => {
     const { camperId, reason, day, type } = input;
     
-    // Create a new nomination
-    const newNomination = {
+    // Create a new nomination with the correct type
+    const newNomination: Nomination = {
       id: Date.now().toString(),
       camperId,
       reason,

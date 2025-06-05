@@ -1,13 +1,11 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { nominations as initialNominations } from "@/mocks/nominations";
-import { NominationType, Nomination } from "@/types";
-
-// Reference the same in-memory database
-let nominations: Nomination[] = [...initialNominations];
+import { nominations } from "../addNomination/route";
+import { NominationType } from "@/types";
 
 // In-memory database for user votes
-let userVotes: {
+// Export this so other routes can access the same reference
+export let userVotes: {
   userId: string;
   nominationType: NominationType;
   day: string;

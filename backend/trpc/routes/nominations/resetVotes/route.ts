@@ -1,9 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-
-// Reference the same in-memory database
-declare const nominations: any[];
-declare const userVotes: any[];
+import { nominations } from "../addNomination/route";
+import { userVotes } from "../voteForNomination/route";
 
 export default publicProcedure
   .input(
@@ -29,14 +27,20 @@ export default publicProcedure
     if (day || type) {
       // Filter out votes that match the criteria
       const filteredVotes = userVotes.filter(vote => {
-        if (day && vote.day === day) return false;
-        if (type && vote.nominationType === type) return false;
+        if (day && type) {
+          return !(vote.day === day && vote.nominationType === type);
+        }
+        if (day) {
+          return vote.day !== day;
+        }
+        if (type) {
+          return vote.nominationType !== type;
+        }
         return true;
       });
       
-      // Clear the array without reassigning
-      userVotes.length = 0;
-      // Add back the filtered votes
+      // Clear the array and add back the filtered votes
+      userVotes.splice(0, userVotes.length);
       filteredVotes.forEach(vote => userVotes.push(vote));
     }
     

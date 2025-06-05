@@ -1,14 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { NominationType } from "@/types";
-
-// Reference the same in-memory database from voteForNomination
-declare const userVotes: {
-  userId: string;
-  nominationType: NominationType;
-  day: string;
-  timestamp: string;
-}[];
+import { userVotes } from "../voteForNomination/route";
 
 export default publicProcedure
   .input(

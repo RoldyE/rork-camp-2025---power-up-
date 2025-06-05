@@ -35,6 +35,8 @@ export function usePolling(
   };
 
   const poll = async () => {
+    if (!isPolling) return;
+    
     try {
       await fetchFn();
       setLastPolled(new Date());
@@ -53,6 +55,7 @@ export function usePolling(
 
   useEffect(() => {
     if (isPolling) {
+      // Call immediately on mount or when isPolling changes to true
       poll();
     }
 

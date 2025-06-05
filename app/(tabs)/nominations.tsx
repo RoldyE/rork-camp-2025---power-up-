@@ -5,7 +5,7 @@ import { Header } from "@/components/Header";
 import { NominationCard } from "@/components/NominationCard";
 import { useNominationStore } from "@/store/nominationStore";
 import { colors } from "@/constants/colors";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { Plus, Award, RotateCcw } from "lucide-react-native";
 import { NominationTypeSelector } from "@/components/NominationTypeSelector";
 import { NominationType } from "@/types";
@@ -14,6 +14,7 @@ import { useAuthStore } from "@/store/authStore";
 import { usePolling } from "@/hooks/usePolling";
 
 export default function NominationsScreen() {
+  const router = useRouter();
   const [selectedDay, setSelectedDay] = useState("Tuesday");
   const [selectedType, setSelectedType] = useState<NominationType>("daily");
   const { 
@@ -46,7 +47,7 @@ export default function NominationsScreen() {
     }
   };
   
-  usePolling(pollFn, { interval: 10000 });
+  usePolling(pollFn, { interval: 5000 });
   
   // Get nominations based on type - daily uses the selected day, others show all days
   const displayNominations = selectedType === "daily" 
@@ -82,6 +83,20 @@ export default function NominationsScreen() {
         }
       ]
     );
+  };
+  
+  const handleAddNomination = () => {
+    router.push({
+      pathname: "/add-nomination",
+      params: { type: selectedType }
+    });
+  };
+  
+  const handleViewSpecialNominations = () => {
+    router.push({
+      pathname: "/special-nominations",
+      params: { type: "sportsmanship" }
+    });
   };
   
   return (
@@ -138,17 +153,19 @@ export default function NominationsScreen() {
       />
       
       <View style={styles.buttonContainer}>
-        <Link href="/add-nomination" asChild>
-          <Pressable style={styles.addButton}>
-            <Plus size={20} color="white" />
-          </Pressable>
-        </Link>
+        <Pressable 
+          style={styles.addButton}
+          onPress={handleAddNomination}
+        >
+          <Plus size={20} color="white" />
+        </Pressable>
         
-        <Link href="/special-nominations" asChild>
-          <Pressable style={styles.specialButton}>
-            <Award size={18} color="white" />
-          </Pressable>
-        </Link>
+        <Pressable 
+          style={styles.specialButton}
+          onPress={handleViewSpecialNominations}
+        >
+          <Award size={18} color="white" />
+        </Pressable>
         
         {displayNominations.length > 0 && (
           <Pressable style={styles.resetButton} onPress={handleResetVotes}>

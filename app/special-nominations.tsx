@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, FlatList, Pressable, Alert, ActivityIndicator } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { colors } from "@/constants/colors";
 import { NominationTypeSelector, getNominationTypeLabel } from "@/components/NominationTypeSelector";
 import { NominationType } from "@/types";
@@ -13,7 +13,13 @@ import { usePolling } from "@/hooks/usePolling";
 
 export default function SpecialNominationsScreen() {
   const router = useRouter();
-  const [selectedType, setSelectedType] = useState<NominationType>("sportsmanship");
+  const params = useLocalSearchParams<{ type?: NominationType }>();
+  const [selectedType, setSelectedType] = useState<NominationType>(
+    params.type && ["sportsmanship", "bravery", "service", "scholar", "other"].includes(params.type as string) 
+      ? params.type as NominationType 
+      : "sportsmanship"
+  );
+  
   const { 
     getWeeklyNominations, 
     getTopNominationsByType, 
@@ -31,7 +37,7 @@ export default function SpecialNominationsScreen() {
   }, [selectedType]);
   
   // Set up polling to keep nominations data fresh
-  usePolling(() => fetchNominations(selectedType), { interval: 10000 });
+  usePolling(() => fetchNominations(selectedType), { interval: 5000 });
   
   // Get all nominations of the selected type (not just daily ones)
   const nominations = getWeeklyNominations(selectedType);
@@ -64,6 +70,13 @@ export default function SpecialNominationsScreen() {
     );
   };
   
+  const handleAddNomination = () => {
+    router.push({
+      pathname: "/add-nomination",
+      params: { type: selectedType }
+    });
+  };
+  
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <Stack.Screen 
@@ -77,7 +90,11 @@ export default function SpecialNominationsScreen() {
       
       <NominationTypeSelector
         selectedType={selectedType}
-        onSelectType={setSelectedType}
+        onSelectType={(type) => {
+          setSelectedType(type);
+          // Update the URL params when changing type
+          router.setParams({ type });
+        }}
       />
       
       {userProfile && (
@@ -127,7 +144,7 @@ export default function SpecialNominationsScreen() {
       <View style={styles.buttonContainer}>
         <Pressable 
           style={styles.addButton}
-          onPress={() => router.push("/add-nomination")}
+          onPress={handleAddNomination}
         >
           <Plus size={20} color="white" />
         </Pressable>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, Alert, ActivityIndicator } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { colors } from "@/constants/colors";
 import { DaySelector } from "@/components/DaySelector";
 import { CamperCard } from "@/components/CamperCard";
@@ -12,12 +12,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AddNominationScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ type?: NominationType }>();
   const { addNomination, isLoading } = useNominationStore();
   
   const [selectedDay, setSelectedDay] = useState("Tuesday");
   const [selectedCamperId, setSelectedCamperId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
-  const [nominationType, setNominationType] = useState<NominationType>("daily");
+  const [nominationType, setNominationType] = useState<NominationType>(params.type || "daily");
   
   const handleSubmit = async () => {
     if (!selectedCamperId) {
@@ -40,7 +41,17 @@ export default function AddNominationScreen() {
     Alert.alert(
       "Nomination Added",
       "Your nomination has been submitted successfully",
-      [{ text: "OK", onPress: () => router.back() }]
+      [{ text: "OK", onPress: () => {
+        // Navigate back to the appropriate screen based on nomination type
+        if (nominationType === "daily") {
+          router.push("/(tabs)/nominations");
+        } else {
+          router.push({
+            pathname: "/special-nominations",
+            params: { type: nominationType }
+          });
+        }
+      }}]
     );
   };
   

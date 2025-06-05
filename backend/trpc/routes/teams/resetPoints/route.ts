@@ -1,11 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { teams as initialTeams } from "@/mocks/teams";
-import { PointEntry, Team } from "@/types";
-
-// Reference the same in-memory database from updatePoints
-// This is a simplified approach - in a real app, you'd use a proper database
-declare const teams: (Team & { pointHistory: PointEntry[] })[];
+import { teams } from "../updatePoints/route";
 
 export default publicProcedure
   .input(

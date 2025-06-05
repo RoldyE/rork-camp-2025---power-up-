@@ -71,7 +71,7 @@ export const useTeamStore = create<TeamState>()(
           });
           
           // Then update on the server
-          const result = await trpcClient.teams.updatePoints.mutate({
+          await trpcClient.teams.updatePoints.mutate({
             teamId,
             points,
             reason
