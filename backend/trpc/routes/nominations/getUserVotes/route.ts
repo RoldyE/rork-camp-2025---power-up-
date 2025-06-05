@@ -3,7 +3,7 @@ import { publicProcedure } from "../../../create-context";
 import { NominationType } from "@/types";
 
 // Reference the same in-memory database from voteForNomination
-declare let userVotes: {
+declare const userVotes: {
   userId: string;
   nominationType: NominationType;
   day: string;

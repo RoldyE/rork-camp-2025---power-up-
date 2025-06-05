@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
+import { nominations as initialNominations } from "@/mocks/nominations";
+import { Nomination } from "@/types";
 
 // Reference the same in-memory database
-declare const nominations: any[];
+let nominations: Nomination[] = [...initialNominations];
 
 export default publicProcedure
   .input(

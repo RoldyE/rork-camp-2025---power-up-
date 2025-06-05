@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { nominations as initialNominations } from "@/mocks/nominations";
-import { NominationType } from "@/types";
+import { NominationType, Nomination } from "@/types";
 
 // Reference the same in-memory database
-let nominations = [...initialNominations];
+let nominations: Nomination[] = [...initialNominations];
 
 // In-memory database for user votes
 let userVotes: {
