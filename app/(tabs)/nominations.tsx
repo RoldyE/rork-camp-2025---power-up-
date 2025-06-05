@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { View, StyleSheet, FlatList, Text, Pressable, Alert } from "react-native";
 import { DaySelector } from "@/components/DaySelector";
 import { Header } from "@/components/Header";
@@ -11,7 +11,6 @@ import { NominationTypeSelector } from "@/components/NominationTypeSelector";
 import { NominationType } from "@/types";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/authStore";
-import { supabase } from "@/lib/supabaseClient";
 
 export default function NominationsScreen() {
   const [selectedDay, setSelectedDay] = useState("Tuesday");
@@ -22,33 +21,9 @@ export default function NominationsScreen() {
     getWeeklyNominations, 
     resetVotes, 
     resetUserVotes, 
-    getUserVoteCount,
-    syncWithSupabase
+    getUserVoteCount
   } = useNominationStore();
   const { userProfile } = useAuthStore();
-  
-  // Set up real-time subscription to nominations
-  useEffect(() => {
-    // Initial sync
-    syncWithSupabase();
-    
-    // Set up real-time subscription
-    const subscription = supabase
-      .channel('public:nominations')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'nominations' 
-      }, () => {
-        // Refresh data when changes occur
-        syncWithSupabase();
-      })
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(subscription);
-    };
-  }, []);
   
   // Get nominations based on type - daily uses the selected day, others show all days
   const displayNominations = selectedType === "daily" 
