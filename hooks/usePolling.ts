@@ -4,6 +4,7 @@ interface PollingOptions {
   interval?: number;
   enabled?: boolean;
   onError?: (error: any) => void;
+  immediate?: boolean;
 }
 
 /**
@@ -16,18 +17,28 @@ export function usePolling(
   fetchFn: () => Promise<any>,
   options: PollingOptions = {}
 ) {
-  const { interval = 5000, enabled = true, onError } = options;
+  const { 
+    interval = 300000, // Increased to 5 minutes by default to reduce frequency
+    enabled = true, 
+    onError,
+    immediate = true 
+  } = options;
+  
   const [isPolling, setIsPolling] = useState(enabled);
   const [lastPolled, setLastPolled] = useState<Date | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+  const isPollingRef = useRef(isPolling);
 
   const startPolling = () => {
     setIsPolling(true);
+    isPollingRef.current = true;
   };
 
   const stopPolling = () => {
     setIsPolling(false);
+    isPollingRef.current = false;
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
@@ -35,36 +46,47 @@ export function usePolling(
   };
 
   const poll = async () => {
-    if (!isPolling) return;
+    if (!isPollingRef.current || !isMountedRef.current) return;
     
     try {
       await fetchFn();
-      setLastPolled(new Date());
-      setError(null);
+      if (isMountedRef.current) {
+        setLastPolled(new Date());
+        setError(null);
+      }
     } catch (err) {
-      setError(err as Error);
-      if (onError) {
-        onError(err);
+      if (isMountedRef.current) {
+        setError(err as Error);
+        if (onError) {
+          onError(err);
+        }
       }
     }
 
-    if (isPolling) {
+    if (isPollingRef.current && isMountedRef.current) {
       timeoutRef.current = setTimeout(poll, interval);
     }
   };
 
   useEffect(() => {
-    if (isPolling) {
+    isMountedRef.current = true;
+    isPollingRef.current = isPolling;
+    
+    if (isPolling && immediate) {
       // Call immediately on mount or when isPolling changes to true
       poll();
+    } else if (isPolling) {
+      // If not immediate, set up the first poll after the interval
+      timeoutRef.current = setTimeout(poll, interval);
     }
 
     return () => {
+      isMountedRef.current = false;
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [isPolling]);
+  }, [isPolling, immediate]);
 
   // Update polling state when enabled option changes
   useEffect(() => {
@@ -81,5 +103,6 @@ export function usePolling(
     error,
     startPolling,
     stopPolling,
+    poll, // Expose poll function to allow manual polling
   };
 }

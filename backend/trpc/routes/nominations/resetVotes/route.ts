@@ -40,7 +40,7 @@ export default publicProcedure
       });
       
       // Clear the array and add back the filtered votes
-      userVotes.splice(0, userVotes.length);
+      userVotes.length = 0;
       filteredVotes.forEach(vote => userVotes.push(vote));
     }
     

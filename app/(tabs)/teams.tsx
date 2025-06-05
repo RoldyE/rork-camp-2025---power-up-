@@ -1,11 +1,10 @@
 import React, { useEffect } from "react";
-import { View, StyleSheet, FlatList, Text, ActivityIndicator } from "react-native";
+import { View, StyleSheet, FlatList, Text, ActivityIndicator, AppState } from "react-native";
 import { Header } from "@/components/Header";
 import { colors } from "@/constants/colors";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTeamStore } from "@/store/teamStore";
 import { SimpleTeamCard } from "@/components/SimpleTeamCard";
-import { TeamPodium } from "@/components/TeamPodium";
 import { usePolling } from "@/hooks/usePolling";
 
 export default function TeamsScreen() {
@@ -16,8 +15,25 @@ export default function TeamsScreen() {
     fetchTeams();
   }, []);
 
-  // Set up polling to keep teams data fresh
-  usePolling(fetchTeams, { interval: 10000 });
+  // Set up polling to keep teams data fresh - reduced frequency
+  const { poll } = usePolling(fetchTeams, { 
+    interval: 300000, // Poll every 5 minutes
+    immediate: false, // Don't poll immediately on mount (we already fetch in useEffect)
+    enabled: false // Disable automatic polling
+  });
+  
+  // Manual poll when tab becomes active
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        poll();
+      }
+    });
+    
+    return () => {
+      subscription.remove();
+    };
+  }, [poll]);
 
   // Sort teams by points (highest first)
   const sortedTeams = [...teams].sort((a, b) => b.points - a.points);
@@ -41,7 +57,6 @@ export default function TeamsScreen() {
         renderItem={({ item }) => <SimpleTeamCard team={item} />}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={<TeamPodium />}
       />
     </SafeAreaView>
   );
@@ -65,5 +80,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingBottom: 100,
+    padding: 16,
   },
 });

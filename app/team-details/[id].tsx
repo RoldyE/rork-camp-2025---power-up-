@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, Alert, FlatList, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Pressable, TextInput, Alert, FlatList, ActivityIndicator, AppState } from "react-native";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { useTeamStore } from "@/store/teamStore";
@@ -24,7 +24,23 @@ export default function TeamDetailsScreen() {
   }, []);
   
   // Set up polling to keep team data fresh
-  usePolling(fetchTeams, { interval: 10000 });
+  const { poll } = usePolling(fetchTeams, { 
+    interval: 60000, // Poll every 60 seconds
+    immediate: false // Don't poll immediately on mount (we already fetch in useEffect)
+  });
+  
+  // Manual poll when screen becomes active
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        poll();
+      }
+    });
+    
+    return () => {
+      subscription.remove();
+    };
+  }, [poll]);
   
   const team = teams.find((t) => t.id === id);
   const pointHistory = getPointHistory(id || "");
@@ -56,6 +72,9 @@ export default function TeamDetailsScreen() {
     setPointsToAdd("");
     setReason("");
     Alert.alert("Points Added", `${points} points added to ${team.name}`);
+    
+    // Refresh data after adding points
+    await fetchTeams();
   };
 
   const handleQuickAddPoints = async (points: number) => {
@@ -65,6 +84,9 @@ export default function TeamDetailsScreen() {
     await addPoints(team.id, points, defaultReason);
     
     Alert.alert("Success", `${points} points added to ${team.name}`);
+    
+    // Refresh data after adding points
+    await fetchTeams();
   };
 
   const handleResetPoints = () => {
@@ -79,6 +101,9 @@ export default function TeamDetailsScreen() {
             // Reset points for this team only
             await resetTeamPoints(team.id);
             Alert.alert("Success", `${team.name}'s points have been reset to zero.`);
+            
+            // Refresh data after reset
+            await fetchTeams();
           },
           style: "destructive" 
         }

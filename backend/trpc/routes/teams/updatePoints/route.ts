@@ -5,10 +5,15 @@ import { PointEntry, Team } from "@/types";
 
 // In-memory database for teams and point history
 // This needs to be exported so other routes can access the same reference
-export let teams: (Team & { pointHistory: PointEntry[] })[] = [...initialTeams.map(team => ({
-  ...team,
-  pointHistory: [] as PointEntry[]
-}))];
+export let teams: Team[] = [...initialTeams];
+
+// Separate storage for point history
+export let pointHistory: Record<string, PointEntry[]> = {};
+
+// Initialize point history for each team
+initialTeams.forEach(team => {
+  pointHistory[team.id] = [];
+});
 
 export default publicProcedure
   .input(
@@ -36,19 +41,23 @@ export default publicProcedure
       date: new Date().toISOString()
     };
     
-    // Update the team
+    // Update the team points
     teams[teamIndex] = {
       ...teams[teamIndex],
-      points: teams[teamIndex].points + points,
-      pointHistory: [
-        ...(teams[teamIndex].pointHistory || []),
-        pointEntry
-      ]
+      points: teams[teamIndex].points + points
     };
+    
+    // Add to point history
+    if (!pointHistory[teamId]) {
+      pointHistory[teamId] = [];
+    }
+    
+    pointHistory[teamId].push(pointEntry);
     
     return {
       success: true,
       team: teams[teamIndex],
+      pointHistory: pointHistory[teamId],
       timestamp: new Date(),
     };
   });

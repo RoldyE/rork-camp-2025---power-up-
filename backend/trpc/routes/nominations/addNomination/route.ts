@@ -13,7 +13,7 @@ export default publicProcedure
       camperId: z.string(),
       reason: z.string(),
       day: z.string(),
-      type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]),
+      type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"])
     })
   )
   .mutation(({ input }) => {

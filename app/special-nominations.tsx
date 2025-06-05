@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable, Alert, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, FlatList, Pressable, Alert, ActivityIndicator, AppState } from "react-native";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { colors } from "@/constants/colors";
 import { NominationTypeSelector, getNominationTypeLabel } from "@/components/NominationTypeSelector";
@@ -13,7 +13,7 @@ import { usePolling } from "@/hooks/usePolling";
 
 export default function SpecialNominationsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ type?: NominationType }>();
+  const params = useLocalSearchParams<{ type?: NominationType, day?: string }>();
   const [selectedType, setSelectedType] = useState<NominationType>(
     params.type && ["sportsmanship", "bravery", "service", "scholar", "other"].includes(params.type as string) 
       ? params.type as NominationType 
@@ -36,8 +36,27 @@ export default function SpecialNominationsScreen() {
     fetchNominations(selectedType);
   }, [selectedType]);
   
-  // Set up polling to keep nominations data fresh
-  usePolling(() => fetchNominations(selectedType), { interval: 5000 });
+  // Set up polling to keep nominations data fresh - reduced frequency
+  const { poll } = usePolling(
+    () => fetchNominations(selectedType), 
+    { 
+      interval: 60000, // Poll every 60 seconds
+      immediate: false // Don't poll immediately on mount (we already fetch in useEffect)
+    }
+  );
+  
+  // Manual poll when screen becomes active
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        poll();
+      }
+    });
+    
+    return () => {
+      subscription.remove();
+    };
+  }, [poll, selectedType]);
   
   // Get all nominations of the selected type (not just daily ones)
   const nominations = getWeeklyNominations(selectedType);
@@ -63,6 +82,9 @@ export default function SpecialNominationsScreen() {
             });
             resetUserVotes(); // Reset user votes when resetting nomination votes
             Alert.alert("Success", "Votes have been reset.");
+            
+            // Refresh data after reset
+            await fetchNominations(selectedType);
           },
           style: "destructive" 
         }
@@ -73,7 +95,10 @@ export default function SpecialNominationsScreen() {
   const handleAddNomination = () => {
     router.push({
       pathname: "/add-nomination",
-      params: { type: selectedType }
+      params: { 
+        type: selectedType,
+        day: params.day || "Tuesday" // Pass the day if it was provided
+      }
     });
   };
   

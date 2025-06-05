@@ -30,6 +30,8 @@ export const useTeamStore = create<TeamState>()(
         try {
           set({ isLoading: true });
           const result = await trpcClient.teams.getTeams.query();
+          
+          // Update teams with server data
           set({ 
             teams: result.teams,
             lastUpdated: new Date(result.timestamp),
@@ -71,22 +73,32 @@ export const useTeamStore = create<TeamState>()(
           });
           
           // Then update on the server
-          await trpcClient.teams.updatePoints.mutate({
+          const result = await trpcClient.teams.updatePoints.mutate({
             teamId,
             points,
             reason
           });
           
-          // Refresh teams to ensure consistency
-          await get().fetchTeams();
-          
-          set({ isLoading: false });
+          // Update the local team with the server data
+          set((state) => {
+            const updatedTeams = state.teams.map((team) =>
+              team.id === teamId
+                ? { 
+                    ...team,
+                    points: result.team.points,
+                    pointHistory: result.pointHistory || team.pointHistory
+                  }
+                : team
+            );
+            
+            return {
+              teams: updatedTeams,
+              isLoading: false
+            };
+          });
         } catch (error) {
           console.error("Error adding points:", error);
           set({ isLoading: false });
-          
-          // Refresh teams to ensure consistency even if there was an error
-          await get().fetchTeams();
         }
       },
         
@@ -117,9 +129,6 @@ export const useTeamStore = create<TeamState>()(
         } catch (error) {
           console.error("Error resetting points:", error);
           set({ isLoading: false });
-          
-          // Refresh teams to ensure consistency even if there was an error
-          await get().fetchTeams();
         }
       },
         
@@ -150,9 +159,6 @@ export const useTeamStore = create<TeamState>()(
         } catch (error) {
           console.error("Error resetting team points:", error);
           set({ isLoading: false });
-          
-          // Refresh teams to ensure consistency even if there was an error
-          await get().fetchTeams();
         }
       },
         
@@ -164,6 +170,11 @@ export const useTeamStore = create<TeamState>()(
     {
       name: "team-storage",
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        // Persist teams to prevent resetting to default values
+        teams: state.teams,
+        lastUpdated: state.lastUpdated
+      }),
     }
   )
 );
