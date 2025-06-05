@@ -54,7 +54,7 @@ export const useNominationStore = create<NominationState>()(
           const { error } = await supabase
             .from('nominations')
             .insert([{
-              camperId: nomination.camperId,
+              camperid: nomination.camperId,
               reason: nomination.reason,
               votes: 0,
               day: nomination.day,
@@ -99,9 +99,9 @@ export const useNominationStore = create<NominationState>()(
             const { error: voteError } = await supabase
               .from('user_votes')
               .insert([{
-                userId: userId,
-                nominationId: nominationId,
-                nominationType: nomination.type,
+                userid: userId,
+                nominationid: nominationId,
+                nominationtype: nomination.type,
                 day: nomination.day,
                 timestamp: new Date().toISOString()
               }]);
@@ -159,7 +159,7 @@ export const useNominationStore = create<NominationState>()(
             .from('user_votes')
             .delete()
             .eq('day', day)
-            .eq('nominationType', type);
+            .eq('nominationtype', type);
             
           if (voteError) {
             console.error('Error clearing user votes in Supabase:', voteError);
@@ -241,8 +241,8 @@ export const useNominationStore = create<NominationState>()(
           const { error } = await supabase
             .from('user_votes')
             .insert([{
-              userId: userId,
-              nominationType: nominationType,
+              userid: userId,
+              nominationtype: nominationType,
               day: day,
               timestamp: new Date().toISOString()
             }]);
@@ -297,14 +297,24 @@ export const useNominationStore = create<NominationState>()(
           }
           
           if (nominationsData && nominationsData.length > 0) {
-            set({ nominations: nominationsData });
+            // Map the data to match our app's structure
+            const mappedNominations = nominationsData.map(nom => ({
+              id: nom.id.toString(),
+              camperId: nom.camperid,
+              reason: nom.reason,
+              votes: nom.votes,
+              day: nom.day,
+              type: nom.type
+            }));
+            
+            set({ nominations: mappedNominations });
           } else {
             // Initialize with local data if none in Supabase
             const { error } = await supabase
               .from('nominations')
               .insert(initialNominations.map(nom => ({
                 id: nom.id,
-                camperId: nom.camperId,
+                camperid: nom.camperId,
                 reason: nom.reason,
                 votes: nom.votes,
                 day: nom.day,
@@ -317,14 +327,15 @@ export const useNominationStore = create<NominationState>()(
           }
           
           if (votesData && votesData.length > 0) {
-            set({ 
-              userVotes: votesData.map(vote => ({
-                userId: vote.userId,
-                nominationType: vote.nominationType,
-                day: vote.day,
-                timestamp: vote.timestamp
-              }))
-            });
+            // Map the data to match our app's structure
+            const mappedVotes = votesData.map(vote => ({
+              userId: vote.userid,
+              nominationType: vote.nominationtype,
+              day: vote.day,
+              timestamp: vote.timestamp
+            }));
+            
+            set({ userVotes: mappedVotes });
           }
         } catch (error) {
           console.error('Failed to sync with Supabase:', error);

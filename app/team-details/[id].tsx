@@ -32,7 +32,7 @@ export default function TeamDetailsScreen() {
         const { data, error } = await supabase
           .from('campers')
           .select('*')
-          .eq('teamId', id);
+          .eq('teamid', id);
           
         if (error) {
           console.error('Error fetching team members:', error);
@@ -75,7 +75,7 @@ export default function TeamDetailsScreen() {
       const { error } = await supabase
         .from('point_history')
         .insert([{
-          teamId: team.id,
+          teamid: team.id,
           points: points,
           reason: reason.trim(),
           date: new Date().toISOString()
@@ -114,7 +114,7 @@ export default function TeamDetailsScreen() {
       const { error } = await supabase
         .from('point_history')
         .insert([{
-          teamId: team.id,
+          teamid: team.id,
           points: points,
           reason: defaultReason,
           date: new Date().toISOString()

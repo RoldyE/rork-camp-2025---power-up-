@@ -101,7 +101,7 @@ export const useTeamStore = create<TeamState>()(
             const { data: historyData, error: historyError } = await supabase
               .from('point_history')
               .select('*')
-              .in('teamId', teamIds);
+              .in('teamid', teamIds);
               
             if (historyError) {
               console.error('Error fetching point history from Supabase:', historyError);
@@ -109,10 +109,15 @@ export const useTeamStore = create<TeamState>()(
             
             // Map point history to teams
             const teamsWithHistory = teamsData.map(team => {
-              const teamHistory = historyData?.filter(entry => entry.teamId === team.id) || [];
+              const teamHistory = historyData?.filter(entry => entry.teamid === team.id) || [];
               return {
                 ...team,
-                pointHistory: teamHistory
+                pointHistory: teamHistory.map(entry => ({
+                  id: entry.id.toString(),
+                  points: entry.points,
+                  reason: entry.reason,
+                  date: entry.date
+                }))
               };
             });
             
