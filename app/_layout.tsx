@@ -8,6 +8,8 @@ import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/store/authStore";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useTeamStore } from "@/store/teamStore";
+import { useNominationStore } from "@/store/nominationStore";
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
@@ -20,6 +22,9 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     ...FontAwesome.font,
   });
+  
+  const { syncWithSupabase: syncTeams } = useTeamStore();
+  const { syncWithSupabase: syncNominations } = useNominationStore();
 
   useEffect(() => {
     if (error) {
@@ -31,6 +36,10 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
+      
+      // Sync with Supabase when app loads
+      syncTeams();
+      syncNominations();
     }
   }, [loaded]);
 

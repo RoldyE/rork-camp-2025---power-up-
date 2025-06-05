@@ -27,18 +27,21 @@ export const NominationCard = ({ nomination, onDelete }: NominationCardProps) =>
   const typeLabel = getNominationTypeLabel(nomination.type);
   
   const handleVote = () => {
-    if (!userProfile) return;
+    if (!userProfile) {
+      Alert.alert("Login Required", "Please log in to vote");
+      return;
+    }
     
     // Check if user has already voted for this nomination type
     const hasVoted = hasUserVoted(userProfile.id, nomination.type);
     
     if (hasVoted) {
-      Alert.alert("Already Voted", "You have already voted for a nomination in this category");
+      Alert.alert("Already Voted", "You have already used your votes for this category");
       return;
     }
     
     // Record the vote
-    voteForNomination(nomination.id);
+    voteForNomination(nomination.id, userProfile.id);
     recordUserVote(userProfile.id, nomination.type, nomination.day);
   };
   

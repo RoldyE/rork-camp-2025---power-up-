@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, FlatList, Text, Pressable, Alert } from "react-native";
 import { DaySelector } from "@/components/DaySelector";
 import { Header } from "@/components/Header";
@@ -11,15 +11,47 @@ import { NominationTypeSelector } from "@/components/NominationTypeSelector";
 import { NominationType } from "@/types";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/authStore";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function NominationsScreen() {
   const [selectedDay, setSelectedDay] = useState("Tuesday");
   const [selectedType, setSelectedType] = useState<NominationType>("daily");
-  const { getCurrentDayNominations, getWeeklyNominations, resetVotes, resetUserVotes, getUserVoteCount } = useNominationStore();
+  const { 
+    nominations,
+    getCurrentDayNominations, 
+    getWeeklyNominations, 
+    resetVotes, 
+    resetUserVotes, 
+    getUserVoteCount,
+    syncWithSupabase
+  } = useNominationStore();
   const { userProfile } = useAuthStore();
   
+  // Set up real-time subscription to nominations
+  useEffect(() => {
+    // Initial sync
+    syncWithSupabase();
+    
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('public:nominations')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'nominations' 
+      }, () => {
+        // Refresh data when changes occur
+        syncWithSupabase();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, []);
+  
   // Get nominations based on type - daily uses the selected day, others show all days
-  const nominations = selectedType === "daily" 
+  const displayNominations = selectedType === "daily" 
     ? getCurrentDayNominations(selectedDay, selectedType)
     : getWeeklyNominations(selectedType);
   
@@ -84,7 +116,7 @@ export default function NominationsScreen() {
       )}
       
       <FlatList
-        data={nominations}
+        data={displayNominations}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <NominationCard 
@@ -114,7 +146,7 @@ export default function NominationsScreen() {
           </Pressable>
         </Link>
         
-        {nominations.length > 0 && (
+        {displayNominations.length > 0 && (
           <Pressable style={styles.resetButton} onPress={handleResetVotes}>
             <RotateCcw size={18} color="white" />
           </Pressable>

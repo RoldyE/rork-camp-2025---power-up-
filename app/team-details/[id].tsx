@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Pressable, TextInput, Alert, FlatList, ScrollView } from "react-native";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
@@ -7,7 +7,7 @@ import { campers } from "@/mocks/campers";
 import { CamperCard } from "@/components/CamperCard";
 import { PointHistoryCard } from "@/components/PointHistoryCard";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronDown, ChevronUp } from "lucide-react-native";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function TeamDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -16,11 +16,36 @@ export default function TeamDetailsScreen() {
   const [pointsToAdd, setPointsToAdd] = useState("");
   const [reason, setReason] = useState("");
   const [activeTab, setActiveTab] = useState<"members" | "history">("members");
-  const [expandedTeam, setExpandedTeam] = useState(true);
+  const [teamCampers, setTeamCampers] = useState<any[]>([]);
   
   const team = teams.find((t) => t.id === id);
-  const teamCampers = campers.filter((c) => c.teamId === id);
   const pointHistory = getPointHistory(id || "");
+  
+  useEffect(() => {
+    // Get team members from local data first
+    const localCampers = campers.filter((c) => c.teamId === id);
+    setTeamCampers(localCampers);
+    
+    // Then try to fetch from Supabase if available
+    const fetchTeamMembers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('campers')
+          .select('*')
+          .eq('teamId', id);
+          
+        if (error) {
+          console.error('Error fetching team members:', error);
+        } else if (data && data.length > 0) {
+          setTeamCampers(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch team members:', error);
+      }
+    };
+    
+    fetchTeamMembers();
+  }, [id]);
   
   if (!team) {
     return (
@@ -30,7 +55,7 @@ export default function TeamDetailsScreen() {
     );
   }
   
-  const handleAddPoints = () => {
+  const handleAddPoints = async () => {
     const points = parseInt(pointsToAdd);
     if (isNaN(points)) {
       Alert.alert("Invalid Input", "Please enter a valid number");
@@ -42,16 +67,76 @@ export default function TeamDetailsScreen() {
       return;
     }
     
+    // Add points locally
     addPoints(team.id, points, reason.trim());
+    
+    // Try to update in Supabase
+    try {
+      const { error } = await supabase
+        .from('point_history')
+        .insert([{
+          teamId: team.id,
+          points: points,
+          reason: reason.trim(),
+          date: new Date().toISOString()
+        }]);
+        
+      if (error) {
+        console.error('Error adding points to Supabase:', error);
+      }
+      
+      // Also update team points in Supabase
+      const { error: teamError } = await supabase
+        .from('teams')
+        .update({ points: team.points + points })
+        .eq('id', team.id);
+        
+      if (teamError) {
+        console.error('Error updating team points in Supabase:', teamError);
+      }
+    } catch (error) {
+      console.error('Failed to update points in Supabase:', error);
+    }
+    
     setPointsToAdd("");
     setReason("");
     Alert.alert("Points Added", `${points} points added to ${team.name}`);
   };
 
-  const handleQuickAddPoints = (points: number) => {
-    // Use Alert.alert instead of Alert.prompt for cross-platform compatibility
+  const handleQuickAddPoints = async (points: number) => {
     const defaultReason = `Quick add ${points} points`;
+    
+    // Add points locally
     addPoints(team.id, points, defaultReason);
+    
+    // Try to update in Supabase
+    try {
+      const { error } = await supabase
+        .from('point_history')
+        .insert([{
+          teamId: team.id,
+          points: points,
+          reason: defaultReason,
+          date: new Date().toISOString()
+        }]);
+        
+      if (error) {
+        console.error('Error adding points to Supabase:', error);
+      }
+      
+      // Also update team points in Supabase
+      const { error: teamError } = await supabase
+        .from('teams')
+        .update({ points: team.points + points })
+        .eq('id', team.id);
+        
+      if (teamError) {
+        console.error('Error updating team points in Supabase:', teamError);
+      }
+    } catch (error) {
+      console.error('Failed to update points in Supabase:', error);
+    }
+    
     Alert.alert("Success", `${points} points added to ${team.name}`);
   };
   
@@ -165,23 +250,17 @@ export default function TeamDetailsScreen() {
       </View>
       
       {activeTab === "members" ? (
-        <ScrollView style={styles.contentContainer}>
-          <Pressable 
-            style={styles.teamHeader}
-            onPress={() => setExpandedTeam(!expandedTeam)}
-          >
-            <Text style={styles.teamHeaderText}>Team Members</Text>
-            {expandedTeam ? (
-              <ChevronUp size={20} color={colors.text} />
-            ) : (
-              <ChevronDown size={20} color={colors.text} />
-            )}
-          </Pressable>
-          
-          {expandedTeam && teamCampers.map((camper) => (
-            <CamperCard key={camper.id} camper={camper} />
-          ))}
-        </ScrollView>
+        <FlatList
+          data={teamCampers}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <CamperCard camper={item} />}
+          contentContainerStyle={styles.contentContainer}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No team members found</Text>
+            </View>
+          }
+        />
       ) : (
         <FlatList
           data={pointHistory}
@@ -332,20 +411,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
-  },
-  teamHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    marginBottom: 12,
-  },
-  teamHeaderText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.text,
   },
   emptyContainer: {
     alignItems: "center",
