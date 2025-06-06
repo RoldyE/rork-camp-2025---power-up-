@@ -48,7 +48,6 @@ export const useNominationStore = create<NominationState>()(
             day
           });
           
-          // Only update if we have data from the server
           if (result && result.nominations) {
             // Update nominations based on type and day
             set((state) => {
@@ -76,10 +75,8 @@ export const useNominationStore = create<NominationState>()(
                 // Add the fetched nominations
                 updatedNominations = [...updatedNominations, ...result.nominations];
               } else {
-                // If neither is specified, merge with existing nominations by ID
-                const existingIds = new Set(updatedNominations.map(nom => nom.id));
-                const newNominations = result.nominations.filter(nom => !existingIds.has(nom.id));
-                updatedNominations = [...updatedNominations, ...newNominations];
+                // If neither is specified, replace all nominations with server data
+                updatedNominations = result.nominations;
               }
               
               return {
@@ -143,22 +140,7 @@ export const useNominationStore = create<NominationState>()(
         try {
           set({ isLoading: true });
           
-          // First add locally for immediate feedback
-          const newId = Date.now().toString();
-          const newNomination = {
-            ...nomination,
-            id: newId,
-            votes: 0,
-          };
-          
-          set((state) => ({
-            nominations: [
-              ...state.nominations,
-              newNomination,
-            ],
-          }));
-          
-          // Then add on the server
+          // Add on the server first
           try {
             const result = await trpcClient.nominations.addNomination.mutate({
               camperId: nomination.camperId,
@@ -167,12 +149,13 @@ export const useNominationStore = create<NominationState>()(
               type: nomination.type,
             });
             
-            // Update the local nomination with the server-generated one
+            // Update local state if server update was successful
             if (result && result.nomination) {
               set((state) => ({
-                nominations: state.nominations.map(nom => 
-                  nom.id === newId ? result.nomination : nom
-                ),
+                nominations: [
+                  ...state.nominations,
+                  result.nomination
+                ],
                 isLoading: false
               }));
             } else {
@@ -180,8 +163,22 @@ export const useNominationStore = create<NominationState>()(
             }
           } catch (serverError) {
             console.error("Server error adding nomination:", serverError);
-            // Keep the local changes even if server fails
-            set({ isLoading: false });
+            
+            // Fallback to local update if server fails
+            const newId = Date.now().toString();
+            const newNomination = {
+              ...nomination,
+              id: newId,
+              votes: 0,
+            };
+            
+            set((state) => ({
+              nominations: [
+                ...state.nominations,
+                newNomination,
+              ],
+              isLoading: false
+            }));
           }
         } catch (error) {
           console.error("Error adding nomination:", error);
@@ -193,31 +190,7 @@ export const useNominationStore = create<NominationState>()(
         try {
           set({ isLoading: true });
           
-          // First update locally for immediate feedback
-          set((state) => ({
-            nominations: state.nominations.map((nom) =>
-              nom.id === nominationId
-                ? { ...nom, votes: nom.votes + 1 }
-                : nom
-            ),
-          }));
-          
-          // Record the user vote locally
-          const newVote = {
-            userId,
-            nominationType,
-            day,
-            timestamp: new Date().toISOString(),
-          };
-          
-          set((state) => ({
-            userVotes: [
-              ...state.userVotes,
-              newVote,
-            ],
-          }));
-          
-          // Then update on the server
+          // Update on the server first
           try {
             await trpcClient.nominations.voteForNomination.mutate({
               nominationId,
@@ -226,10 +199,31 @@ export const useNominationStore = create<NominationState>()(
               day,
             });
             
-            set({ isLoading: false });
+            // Update local state after server update
+            set((state) => {
+              // Update nomination votes
+              const updatedNominations = state.nominations.map((nom) =>
+                nom.id === nominationId
+                  ? { ...nom, votes: nom.votes + 1 }
+                  : nom
+              );
+              
+              // Record the user vote locally
+              const newVote = {
+                userId,
+                nominationType,
+                day,
+                timestamp: new Date().toISOString(),
+              };
+              
+              return {
+                nominations: updatedNominations,
+                userVotes: [...state.userVotes, newVote],
+                isLoading: false
+              };
+            });
           } catch (serverError) {
             console.error("Server error voting for nomination:", serverError);
-            // Keep the local changes even if server fails
             set({ isLoading: false });
           }
         } catch (error) {
@@ -248,28 +242,26 @@ export const useNominationStore = create<NominationState>()(
         try {
           set({ isLoading: true });
           
-          // First update locally for immediate feedback
-          set((state) => ({
-            nominations: state.nominations.map((nom) =>
-              nom.day === day && nom.type === type ? { ...nom, votes: 0 } : nom
-            ),
-            // Also filter out user votes for this day and type
-            userVotes: state.userVotes.filter(
-              vote => !(vote.day === day && vote.nominationType === type)
-            )
-          }));
-          
-          // Then update on the server
+          // Update on the server first
           try {
             await trpcClient.nominations.resetVotes.mutate({
               day,
               type,
             });
             
-            set({ isLoading: false });
+            // Update local state after server update
+            set((state) => ({
+              nominations: state.nominations.map((nom) =>
+                nom.day === day && nom.type === type ? { ...nom, votes: 0 } : nom
+              ),
+              // Also filter out user votes for this day and type
+              userVotes: state.userVotes.filter(
+                vote => !(vote.day === day && vote.nominationType === type)
+              ),
+              isLoading: false
+            }));
           } catch (serverError) {
             console.error("Server error resetting votes:", serverError);
-            // Keep the local changes even if server fails
             set({ isLoading: false });
           }
         } catch (error) {

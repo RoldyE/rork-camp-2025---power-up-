@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { nominations } from "../addNomination/route";
+import { nominations, nominationsByTypeAndDay } from "../addNomination/route";
 import { NominationType } from "@/types";
 
 export default publicProcedure
@@ -11,6 +11,16 @@ export default publicProcedure
     }).optional()
   )
   .query(({ input }) => {
+    // If both type and day are specified, use the optimized lookup
+    if (input?.type && input?.day) {
+      const key = `${input.type}-${input.day}`;
+      return {
+        nominations: nominationsByTypeAndDay[key] || [],
+        timestamp: new Date(),
+      };
+    }
+    
+    // Otherwise filter the nominations array
     let filteredNominations = [...nominations];
     
     if (input?.type) {

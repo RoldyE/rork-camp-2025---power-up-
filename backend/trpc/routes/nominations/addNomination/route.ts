@@ -7,6 +7,23 @@ import { NominationType, Nomination } from "@/types";
 // Export this so other routes can access the same reference
 export let nominations: Nomination[] = [...initialNominations];
 
+// Map to track nominations by type and day for faster lookups
+export const nominationsByTypeAndDay: Record<string, Nomination[]> = {};
+
+// Initialize the map
+function initializeNominationMap() {
+  nominations.forEach(nom => {
+    const key = `${nom.type}-${nom.day}`;
+    if (!nominationsByTypeAndDay[key]) {
+      nominationsByTypeAndDay[key] = [];
+    }
+    nominationsByTypeAndDay[key].push(nom);
+  });
+}
+
+// Call initialization
+initializeNominationMap();
+
 export default publicProcedure
   .input(
     z.object({
@@ -31,6 +48,13 @@ export default publicProcedure
     
     // Add the nomination to the database
     nominations.push(newNomination);
+    
+    // Update the map
+    const key = `${type}-${day}`;
+    if (!nominationsByTypeAndDay[key]) {
+      nominationsByTypeAndDay[key] = [];
+    }
+    nominationsByTypeAndDay[key].push(newNomination);
     
     return {
       success: true,

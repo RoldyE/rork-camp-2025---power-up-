@@ -3,9 +3,16 @@ import { publicProcedure } from "../../../create-context";
 import { teams as initialTeams } from "@/mocks/teams";
 import { PointEntry, Team } from "@/types";
 
+// Initialize teams with zero points instead of default values
+// This ensures all clients start with the same base state
+const zeroPointTeams = initialTeams.map(team => ({
+  ...team,
+  points: 0,
+}));
+
 // In-memory database for teams and point history
 // This needs to be exported so other routes can access the same reference
-export let teams: Team[] = [...initialTeams];
+export let teams: Team[] = [...zeroPointTeams];
 
 // Separate storage for point history
 export let pointHistory: Record<string, PointEntry[]> = {};

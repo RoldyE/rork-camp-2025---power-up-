@@ -12,19 +12,16 @@ export default publicProcedure
     })
   )
   .query(({ input }) => {
-    let filteredVotes = [...userVotes];
+    const { userId, nominationType, day } = input;
     
-    // Filter by user ID
-    filteredVotes = filteredVotes.filter(vote => vote.userId === input.userId);
+    let filteredVotes = userVotes.filter(vote => vote.userId === userId);
     
-    // Filter by nomination type if provided
-    if (input.nominationType) {
-      filteredVotes = filteredVotes.filter(vote => vote.nominationType === input.nominationType);
+    if (nominationType) {
+      filteredVotes = filteredVotes.filter(vote => vote.nominationType === nominationType);
     }
     
-    // Filter by day if provided
-    if (input.day) {
-      filteredVotes = filteredVotes.filter(vote => vote.day === input.day);
+    if (day) {
+      filteredVotes = filteredVotes.filter(vote => vote.day === day);
     }
     
     return {

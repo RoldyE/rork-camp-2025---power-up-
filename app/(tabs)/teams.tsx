@@ -10,14 +10,14 @@ import { usePolling } from "@/hooks/usePolling";
 export default function TeamsScreen() {
   const { teams, fetchTeams, isLoading } = useTeamStore();
 
-  // Initial fetch
+  // Initial fetch on mount
   useEffect(() => {
     fetchTeams();
   }, []);
 
   // Set up polling to keep teams data fresh - DISABLED automatic polling
   const { poll } = usePolling(fetchTeams, { 
-    interval: 600000, // Poll every 10 minutes (reduced from 5 minutes)
+    interval: 300000, // Poll every 5 minutes
     immediate: false, // Don't poll immediately on mount (we already fetch in useEffect)
     enabled: false // Disable automatic polling completely
   });
@@ -26,6 +26,7 @@ export default function TeamsScreen() {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active') {
+        // Only poll when app becomes active
         poll();
       }
     });

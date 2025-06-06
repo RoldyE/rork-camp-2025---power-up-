@@ -4,13 +4,12 @@ import { nominations } from "../addNomination/route";
 import { NominationType } from "@/types";
 
 // In-memory database for user votes
-// Export this so other routes can access the same reference
-export let userVotes: {
+export const userVotes: Array<{
   userId: string;
   nominationType: NominationType;
   day: string;
   timestamp: string;
-}[] = [];
+}> = [];
 
 export default publicProcedure
   .input(
@@ -24,12 +23,18 @@ export default publicProcedure
   .mutation(({ input }) => {
     const { nominationId, userId, nominationType, day } = input;
     
-    // Find the nomination
+    // Find the nomination and update its votes
     const nominationIndex = nominations.findIndex(nom => nom.id === nominationId);
     
     if (nominationIndex === -1) {
       throw new Error(`Nomination with ID ${nominationId} not found`);
     }
+    
+    // Increment the votes
+    nominations[nominationIndex] = {
+      ...nominations[nominationIndex],
+      votes: nominations[nominationIndex].votes + 1
+    };
     
     // Record the user vote
     userVotes.push({
@@ -38,12 +43,6 @@ export default publicProcedure
       day,
       timestamp: new Date().toISOString(),
     });
-    
-    // Update the nomination votes
-    nominations[nominationIndex] = {
-      ...nominations[nominationIndex],
-      votes: nominations[nominationIndex].votes + 1,
-    };
     
     return {
       success: true,

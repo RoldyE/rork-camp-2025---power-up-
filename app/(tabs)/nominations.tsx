@@ -29,30 +29,25 @@ export default function NominationsScreen() {
   } = useNominationStore();
   const { userProfile } = useAuthStore();
   
-  // Initial fetch
+  // Initial fetch when component mounts
   useEffect(() => {
-    const fetchData = async () => {
-      if (selectedType === "daily") {
-        await fetchNominations(selectedType, selectedDay);
-      } else {
-        await fetchNominations(selectedType);
-      }
-    };
-    
-    fetchData();
+    fetchNominations();
+  }, []);
+  
+  // Fetch when type or day changes
+  useEffect(() => {
+    if (selectedType === "daily") {
+      fetchNominations(selectedType, selectedDay);
+    } else {
+      fetchNominations(selectedType);
+    }
   }, [selectedType, selectedDay]);
   
   // Set up polling to keep nominations data fresh - DISABLED automatic polling
   const { poll } = usePolling(
-    () => {
-      if (selectedType === "daily") {
-        return fetchNominations(selectedType, selectedDay);
-      } else {
-        return fetchNominations(selectedType);
-      }
-    }, 
+    () => fetchNominations(),
     { 
-      interval: 600000, // Poll every 10 minutes (increased from 5 minutes)
+      interval: 300000, // Poll every 5 minutes
       immediate: false, // Don't poll immediately on mount (we already fetch in useEffect)
       enabled: false // Disable automatic polling completely
     }
@@ -62,6 +57,7 @@ export default function NominationsScreen() {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active') {
+        // Only poll when app becomes active
         poll();
       }
     });
@@ -69,7 +65,7 @@ export default function NominationsScreen() {
     return () => {
       subscription.remove();
     };
-  }, [poll, selectedType, selectedDay]);
+  }, [poll]);
   
   // Get nominations based on type - daily uses the selected day, others show all days
   const displayNominations = selectedType === "daily" 

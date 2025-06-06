@@ -11,9 +11,9 @@ export function usePolling(
   options: PollingOptions = {}
 ) {
   const { 
-    interval = 60000, // Default to 60 seconds
+    interval = 300000, // Default to 5 minutes (increased from 60 seconds)
     immediate = true,
-    enabled = true
+    enabled = false // Default to disabled (changed from true)
   } = options;
   
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
