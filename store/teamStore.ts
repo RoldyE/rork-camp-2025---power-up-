@@ -31,12 +31,27 @@ export const useTeamStore = create<TeamState>()(
           set({ isLoading: true });
           const result = await trpcClient.teams.getTeams.query();
           
-          // Update teams with server data
-          set({ 
-            teams: result.teams,
-            lastUpdated: new Date(result.timestamp),
-            isLoading: false
-          });
+          // Only update if we have data from the server
+          if (result && result.teams && result.teams.length > 0) {
+            // Merge server data with local data to preserve point history
+            const updatedTeams = result.teams.map(serverTeam => {
+              const localTeam = get().teams.find(t => t.id === serverTeam.id);
+              return {
+                ...serverTeam,
+                // Keep local point history if it exists
+                pointHistory: localTeam?.pointHistory || []
+              };
+            });
+            
+            set({ 
+              teams: updatedTeams,
+              lastUpdated: new Date(result.timestamp),
+              isLoading: false
+            });
+          } else {
+            // If no server data, just stop loading
+            set({ isLoading: false });
+          }
         } catch (error) {
           console.error("Error fetching teams:", error);
           set({ isLoading: false });
@@ -73,29 +88,39 @@ export const useTeamStore = create<TeamState>()(
           });
           
           // Then update on the server
-          const result = await trpcClient.teams.updatePoints.mutate({
-            teamId,
-            points,
-            reason
-          });
-          
-          // Update the local team with the server data
-          set((state) => {
-            const updatedTeams = state.teams.map((team) =>
-              team.id === teamId
-                ? { 
-                    ...team,
-                    points: result.team.points,
-                    pointHistory: result.pointHistory || team.pointHistory
-                  }
-                : team
-            );
+          try {
+            const result = await trpcClient.teams.updatePoints.mutate({
+              teamId,
+              points,
+              reason
+            });
             
-            return {
-              teams: updatedTeams,
-              isLoading: false
-            };
-          });
+            // Update the local team with the server data
+            if (result && result.team) {
+              set((state) => {
+                const updatedTeams = state.teams.map((team) =>
+                  team.id === teamId
+                    ? { 
+                        ...team,
+                        points: result.team.points,
+                        pointHistory: result.pointHistory || team.pointHistory
+                      }
+                    : team
+                );
+                
+                return {
+                  teams: updatedTeams,
+                  isLoading: false
+                };
+              });
+            } else {
+              set({ isLoading: false });
+            }
+          } catch (serverError) {
+            console.error("Server error adding points:", serverError);
+            // Keep the local changes even if server fails
+            set({ isLoading: false });
+          }
         } catch (error) {
           console.error("Error adding points:", error);
           set({ isLoading: false });
@@ -120,12 +145,16 @@ export const useTeamStore = create<TeamState>()(
           });
           
           // Then update on the server
-          await trpcClient.teams.resetPoints.mutate({});
-          
-          // Refresh teams to ensure consistency
-          await get().fetchTeams();
-          
-          set({ isLoading: false });
+          try {
+            await trpcClient.teams.resetPoints.mutate({});
+            
+            // No need to refresh teams here, we've already reset locally
+            set({ isLoading: false });
+          } catch (serverError) {
+            console.error("Server error resetting points:", serverError);
+            // Keep the local changes even if server fails
+            set({ isLoading: false });
+          }
         } catch (error) {
           console.error("Error resetting points:", error);
           set({ isLoading: false });
@@ -150,12 +179,16 @@ export const useTeamStore = create<TeamState>()(
           });
           
           // Then update on the server
-          await trpcClient.teams.resetPoints.mutate({ teamId });
-          
-          // Refresh teams to ensure consistency
-          await get().fetchTeams();
-          
-          set({ isLoading: false });
+          try {
+            await trpcClient.teams.resetPoints.mutate({ teamId });
+            
+            // No need to refresh teams here, we've already reset locally
+            set({ isLoading: false });
+          } catch (serverError) {
+            console.error("Server error resetting team points:", serverError);
+            // Keep the local changes even if server fails
+            set({ isLoading: false });
+          }
         } catch (error) {
           console.error("Error resetting team points:", error);
           set({ isLoading: false });

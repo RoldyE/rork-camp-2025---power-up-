@@ -8,19 +8,21 @@ export default publicProcedure
     z.object({
       type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]).optional(),
       day: z.string().optional(),
-    })
+    }).optional()
   )
   .query(({ input }) => {
-    const { type, day } = input;
-    
     let filteredNominations = [...nominations];
     
-    if (type) {
-      filteredNominations = filteredNominations.filter(nom => nom.type === type);
+    if (input?.type) {
+      filteredNominations = filteredNominations.filter(
+        nom => nom.type === input.type
+      );
     }
     
-    if (day) {
-      filteredNominations = filteredNominations.filter(nom => nom.day === day);
+    if (input?.day) {
+      filteredNominations = filteredNominations.filter(
+        nom => nom.day === input.day
+      );
     }
     
     return {

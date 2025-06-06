@@ -42,7 +42,7 @@ export default function NominationsScreen() {
     fetchData();
   }, [selectedType, selectedDay]);
   
-  // Set up polling to keep nominations data fresh - REDUCED FREQUENCY
+  // Set up polling to keep nominations data fresh - DISABLED automatic polling
   const { poll } = usePolling(
     () => {
       if (selectedType === "daily") {
@@ -52,9 +52,9 @@ export default function NominationsScreen() {
       }
     }, 
     { 
-      interval: 300000, // Poll every 5 minutes instead of every minute
+      interval: 600000, // Poll every 10 minutes (increased from 5 minutes)
       immediate: false, // Don't poll immediately on mount (we already fetch in useEffect)
-      enabled: false // Disable automatic polling
+      enabled: false // Disable automatic polling completely
     }
   );
   

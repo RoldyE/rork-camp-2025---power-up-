@@ -7,31 +7,46 @@ import { NominationType } from "@/types";
 export default publicProcedure
   .input(
     z.object({
-      day: z.string(),
-      type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]),
+      day: z.string().optional(),
+      type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]).optional(),
     })
   )
   .mutation(({ input }) => {
     const { day, type } = input;
     
-    // Reset votes for nominations of the specified day and type
-    nominations.forEach((nom, index) => {
-      if (nom.day === day && nom.type === type) {
+    // Reset votes for nominations matching the criteria
+    nominations.forEach((nomination, index) => {
+      if (
+        (day === undefined || nomination.day === day) &&
+        (type === undefined || nomination.type === type)
+      ) {
         nominations[index] = {
-          ...nom,
+          ...nomination,
           votes: 0
         };
       }
     });
     
-    // Remove user votes for this day and type
-    const filteredVotes = userVotes.filter(
-      vote => !(vote.day === day && vote.nominationType === type)
-    );
-    
-    // Clear the array and add back the filtered votes
-    userVotes.length = 0;
-    userVotes.push(...filteredVotes);
+    // Remove user votes matching the criteria
+    if (day !== undefined || type !== undefined) {
+      const newUserVotes = userVotes.filter(vote => {
+        if (day !== undefined && type !== undefined) {
+          return !(vote.day === day && vote.nominationType === type);
+        } else if (day !== undefined) {
+          return vote.day !== day;
+        } else if (type !== undefined) {
+          return vote.nominationType !== type;
+        }
+        return true;
+      });
+      
+      // Clear the array and add the filtered votes back
+      userVotes.length = 0;
+      userVotes.push(...newUserVotes);
+    } else {
+      // If no criteria provided, reset all votes
+      userVotes.length = 0;
+    }
     
     return {
       success: true,
