@@ -13,7 +13,7 @@ import { usePolling } from "@/hooks/usePolling";
 
 export default function NominationsScreen() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { userProfile } = useAuthStore();
   const { 
     nominations, 
     isLoading, 
@@ -50,15 +50,15 @@ export default function NominationsScreen() {
   
   // Handle vote
   const handleVote = async (nominationId: string) => {
-    if (!user) return;
+    if (!userProfile) return;
     
     // Check if user has already voted
-    if (hasUserVoted(user.id, selectedType)) {
+    if (hasUserVoted(userProfile.id, selectedType)) {
       alert("You've already used all your votes for this category");
       return;
     }
     
-    await voteForNomination(nominationId, user.id, selectedType, selectedDay);
+    await voteForNomination(nominationId, userProfile.id, selectedType, selectedDay);
   };
   
   // Navigate to add nomination
@@ -76,8 +76,8 @@ export default function NominationsScreen() {
   
   // Get remaining votes
   const getRemainingVotes = () => {
-    if (!user) return 0;
-    const usedVotes = getUserVoteCount(user.id, selectedType, selectedDay === "today" ? "today" : selectedDay);
+    if (!userProfile) return 0;
+    const usedVotes = getUserVoteCount(userProfile.id, selectedType, selectedDay === "today" ? "today" : selectedDay);
     return Math.max(0, 2 - usedVotes); // 2 votes per type
   };
   
@@ -108,7 +108,7 @@ export default function NominationsScreen() {
         onSelectDay={setSelectedDay}
       />
       
-      {user && (
+      {userProfile && (
         <View style={styles.votesContainer}>
           <Text style={styles.votesText}>
             You have {getRemainingVotes()} votes remaining for this category
@@ -131,7 +131,7 @@ export default function NominationsScreen() {
                 key={nomination.id}
                 nomination={nomination}
                 onVote={() => handleVote(nomination.id)}
-                disabled={!user || hasUserVoted(user.id, selectedType)}
+                disabled={!userProfile || hasUserVoted(userProfile.id, selectedType)}
               />
             ))
           ) : (

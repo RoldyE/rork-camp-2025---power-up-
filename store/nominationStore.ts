@@ -312,7 +312,8 @@ export const useNominationStore = create<NominationState>()(
       name: "nomination-storage",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        // Only persist user votes locally - nominations come from server
+        // Persist nominations and user votes locally for offline access
+        nominations: state.nominations,
         userVotes: state.userVotes,
         lastUpdated: state.lastUpdated
       }),

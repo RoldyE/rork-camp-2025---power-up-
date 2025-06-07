@@ -9,21 +9,26 @@ interface GlobalStorage {
   nominationsByTypeAndDay?: Record<string, Nomination[]>;
 }
 
+// Get the global object
+const globalObj = global as any;
+
 // In-memory database for nominations
 // Using a more persistent approach with a global variable
 // This will be shared across all imports of this module
-let globalNominations = ((global as unknown as GlobalStorage).nominations || [...initialNominations]) as Nomination[];
-(global as unknown as GlobalStorage).nominations = globalNominations;
+if (!globalObj.nominations) {
+  globalObj.nominations = [...initialNominations];
+}
 
 // Export this so other routes can access the same reference
-export let nominations = globalNominations;
+export let nominations = globalObj.nominations;
 
 // Map to track nominations by type and day for faster lookups
 // Also make this global to persist between server restarts
-let globalNominationsByTypeAndDay = ((global as unknown as GlobalStorage).nominationsByTypeAndDay || {}) as Record<string, Nomination[]>;
-(global as unknown as GlobalStorage).nominationsByTypeAndDay = globalNominationsByTypeAndDay;
+if (!globalObj.nominationsByTypeAndDay) {
+  globalObj.nominationsByTypeAndDay = {};
+}
 
-export const nominationsByTypeAndDay = globalNominationsByTypeAndDay;
+export const nominationsByTypeAndDay = globalObj.nominationsByTypeAndDay;
 
 // Initialize the map if it's empty
 function initializeNominationMap() {

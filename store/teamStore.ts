@@ -37,20 +37,20 @@ export const useTeamStore = create<TeamState>()(
           
           if (result && result.teams) {
             // Always use server data as source of truth for points
-            const updatedTeams = result.teams.map((serverTeam: Team) => {
+            const updatedTeams = result.teams.map((serverTeam: any) => {
               // Find the local team to preserve any local data we want to keep
               const localTeam = get().teams.find(t => t.id === serverTeam.id);
               
               return {
-                ...serverTeam,
-                // Keep local team data that's not related to points
-                name: serverTeam.name || localTeam?.name,
-                color: serverTeam.color || localTeam?.color,
+                id: serverTeam.id,
+                // Ensure required properties have default values if undefined
+                name: serverTeam.name || localTeam?.name || "Unknown Team",
+                color: serverTeam.color || localTeam?.color || "#cccccc",
                 // Always use server points
-                points: serverTeam.points,
+                points: serverTeam.points || 0,
                 // Get point history from server if available
                 pointHistory: result.pointHistory?.[serverTeam.id] || localTeam?.pointHistory || []
-              };
+              } as Team;
             });
             
             set({ 
@@ -146,7 +146,8 @@ export const useTeamStore = create<TeamState>()(
       name: "team-storage",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        // Don't persist teams locally - they come from server
+        // Persist teams locally to ensure data is available offline
+        teams: state.teams,
         lastUpdated: state.lastUpdated
       }),
     }

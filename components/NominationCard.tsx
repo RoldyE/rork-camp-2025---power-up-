@@ -13,9 +13,11 @@ import { useAuthStore } from "@/store/authStore";
 type NominationCardProps = {
   nomination: Nomination;
   onDelete?: () => void;
+  onVote?: () => void; // Add onVote prop
+  disabled?: boolean; // Add disabled prop
 };
 
-export const NominationCard = ({ nomination, onDelete }: NominationCardProps) => {
+export const NominationCard = ({ nomination, onDelete, onVote, disabled = false }: NominationCardProps) => {
   const { voteForNomination, deleteNomination, hasUserVoted, getUserVoteCount } = useNominationStore();
   const { userProfile } = useAuthStore();
   const camper = campers.find((c) => c.id === nomination.camperId);
@@ -27,6 +29,12 @@ export const NominationCard = ({ nomination, onDelete }: NominationCardProps) =>
   const typeLabel = getNominationTypeLabel(nomination.type);
   
   const handleVote = async () => {
+    if (onVote) {
+      // Use the provided onVote handler if available
+      onVote();
+      return;
+    }
+    
     if (!userProfile) {
       Alert.alert("Login Required", "Please log in to vote");
       return;
@@ -119,8 +127,12 @@ export const NominationCard = ({ nomination, onDelete }: NominationCardProps) =>
       </View>
       <View style={styles.footer}>
         <Pressable 
-          style={[styles.voteButton, { backgroundColor: typeColor }]}
+          style={[
+            styles.voteButton, 
+            { backgroundColor: disabled ? colors.textLight : typeColor }
+          ]}
           onPress={handleVote}
+          disabled={disabled}
         >
           <Text style={styles.voteButtonText}>Vote</Text>
         </Pressable>

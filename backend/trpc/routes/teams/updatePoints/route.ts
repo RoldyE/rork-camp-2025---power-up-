@@ -9,6 +9,9 @@ interface GlobalStorage {
   pointHistory?: Record<string, PointEntry[]>;
 }
 
+// Get the global object
+const globalObj = global as any;
+
 // Initialize teams with zero points instead of default values
 // This ensures all clients start with the same base state
 const zeroPointTeams = initialTeams.map(team => ({
@@ -17,17 +20,19 @@ const zeroPointTeams = initialTeams.map(team => ({
 }));
 
 // In-memory database for teams and point history - make it global for persistence
-let globalTeams = ((global as unknown as GlobalStorage).teams || [...zeroPointTeams]) as Team[];
-(global as unknown as GlobalStorage).teams = globalTeams;
+if (!globalObj.teams) {
+  globalObj.teams = [...zeroPointTeams];
+}
 
 // Export the global reference
-export let teams = globalTeams;
+export let teams = globalObj.teams;
 
 // Separate storage for point history - also make it global
-let globalPointHistory = ((global as unknown as GlobalStorage).pointHistory || {}) as Record<string, PointEntry[]>;
-(global as unknown as GlobalStorage).pointHistory = globalPointHistory;
+if (!globalObj.pointHistory) {
+  globalObj.pointHistory = {};
+}
 
-export let pointHistory = globalPointHistory;
+export let pointHistory = globalObj.pointHistory;
 
 // Initialize point history for each team if not already done
 if (Object.keys(pointHistory).length === 0) {
@@ -48,7 +53,7 @@ export default publicProcedure
     const { teamId, points, reason } = input;
     
     // Find the team and update its points
-    const teamIndex = teams.findIndex(team => team.id === teamId);
+    const teamIndex = teams.findIndex((team: Team) => team.id === teamId);
     
     if (teamIndex === -1) {
       throw new Error(`Team with ID ${teamId} not found`);

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { userVotes } from "../voteForNomination/route";
-import { NominationType, UserVote } from "@/types";
+import { UserVote } from "@/types";
 
 export default publicProcedure
   .input(
@@ -14,22 +14,34 @@ export default publicProcedure
   .query(({ input }) => {
     const { userId, nominationType, day } = input;
     
-    // Filter votes by user ID
-    let filteredVotes = userVotes.filter((vote: UserVote) => vote.userId === userId);
+    let filteredVotes: UserVote[] = [];
     
-    // Further filter by nomination type if provided
-    if (nominationType) {
-      filteredVotes = filteredVotes.filter((vote: UserVote) => vote.nominationType === nominationType);
+    if (nominationType && day) {
+      // Filter by user ID, nomination type, and day
+      filteredVotes = userVotes.filter((vote: UserVote) => 
+        vote.userId === userId && 
+        vote.nominationType === nominationType && 
+        vote.day === day
+      );
+    } else if (nominationType) {
+      // Filter by user ID and nomination type
+      filteredVotes = userVotes.filter((vote: UserVote) => 
+        vote.userId === userId && 
+        vote.nominationType === nominationType
+      );
+    } else if (day) {
+      // Filter by user ID and day
+      filteredVotes = userVotes.filter((vote: UserVote) => 
+        vote.userId === userId && 
+        vote.day === day
+      );
+    } else {
+      // Filter by user ID only
+      filteredVotes = userVotes.filter((vote: UserVote) => vote.userId === userId);
     }
-    
-    // Further filter by day if provided
-    if (day) {
-      filteredVotes = filteredVotes.filter((vote: UserVote) => vote.day === day);
-    }
-    
-    console.log(`Found ${filteredVotes.length} votes for user ${userId}`);
     
     return {
+      success: true,
       votes: filteredVotes,
       timestamp: new Date(),
     };

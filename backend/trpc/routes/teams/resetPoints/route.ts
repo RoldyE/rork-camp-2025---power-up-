@@ -27,9 +27,17 @@ export default publicProcedure
       };
       
       // Clear the team's point history
-      pointHistory[teamId] = [];
+      if (pointHistory[teamId]) {
+        pointHistory[teamId] = [];
+      }
       
       console.log(`Reset points for team ${teamId}`);
+      
+      return {
+        success: true,
+        team: teams[teamIndex],
+        timestamp: new Date(),
+      };
     } else {
       // Reset points for all teams
       teams.forEach((team: Team, index: number) => {
@@ -39,14 +47,17 @@ export default publicProcedure
         };
         
         // Clear the team's point history
-        pointHistory[team.id] = [];
+        if (pointHistory[team.id]) {
+          pointHistory[team.id] = [];
+        }
       });
       
       console.log("Reset points for all teams");
+      
+      return {
+        success: true,
+        teams,
+        timestamp: new Date(),
+      };
     }
-    
-    return {
-      success: true,
-      timestamp: new Date(),
-    };
   });

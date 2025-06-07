@@ -1,83 +1,106 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import { colors } from "@/constants/colors";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Team } from "@/types";
+import { colors } from "@/constants/colors";
 
-export interface TeamScoreCardProps {
+type TeamScoreCardProps = {
   team: Team;
-  rank: number;
+  position?: number; // Changed from rank to position
   onPress?: () => void;
-}
+};
 
-export const TeamScoreCard = ({ team, rank, onPress }: TeamScoreCardProps) => {
+export const TeamScoreCard = ({ team, position, onPress }: TeamScoreCardProps) => {
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.container,
-        { opacity: pressed ? 0.9 : 1 }
-      ]}
+    <TouchableOpacity 
+      style={styles.card}
       onPress={onPress}
+      disabled={!onPress}
     >
-      <View style={styles.rankContainer}>
-        <Text style={styles.rankText}>{rank}</Text>
-      </View>
+      {position && (
+        <View style={[
+          styles.rankBadge,
+          position === 1 ? styles.firstPlace : 
+          position === 2 ? styles.secondPlace : 
+          position === 3 ? styles.thirdPlace : 
+          styles.otherPlace
+        ]}>
+          <Text style={styles.rankText}>{position}</Text>
+        </View>
+      )}
       
-      <View style={[styles.colorIndicator, { backgroundColor: team.color }]} />
-      
-      <View style={styles.infoContainer}>
+      <View style={styles.teamInfo}>
+        <View style={[styles.teamDot, { backgroundColor: team.color }]} />
         <Text style={styles.teamName}>{team.name}</Text>
       </View>
       
-      <View style={styles.pointsContainer}>
-        <Text style={styles.pointsText}>{team.points}</Text>
+      <View style={styles.scoreContainer}>
+        <Text style={styles.scoreText}>{team.points}</Text>
         <Text style={styles.pointsLabel}>points</Text>
       </View>
-    </Pressable>
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
+  card: {
     backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
     elevation: 2,
   },
-  rankContainer: {
+  rankBadge: {
     width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: "center",
     alignItems: "center",
-  },
-  rankText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.textLight,
-  },
-  colorIndicator: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
     marginRight: 12,
   },
-  infoContainer: {
+  firstPlace: {
+    backgroundColor: "#FFD700",
+  },
+  secondPlace: {
+    backgroundColor: "#C0C0C0",
+  },
+  thirdPlace: {
+    backgroundColor: "#CD7F32",
+  },
+  otherPlace: {
+    backgroundColor: colors.border,
+  },
+  rankText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  teamInfo: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  teamDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
   },
   teamName: {
     fontSize: 16,
     fontWeight: "600",
     color: colors.text,
   },
-  pointsContainer: {
-    alignItems: "flex-end",
+  scoreContainer: {
+    alignItems: "center",
   },
-  pointsText: {
-    fontSize: 18,
+  scoreText: {
+    fontSize: 20,
     fontWeight: "700",
     color: colors.primary,
   },

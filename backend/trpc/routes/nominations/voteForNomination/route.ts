@@ -8,11 +8,15 @@ interface GlobalStorage {
   userVotes?: UserVote[];
 }
 
-// In-memory database for user votes - make it global for persistence
-let globalUserVotes = ((global as unknown as GlobalStorage).userVotes || []) as UserVote[];
-(global as unknown as GlobalStorage).userVotes = globalUserVotes;
+// Get the global object
+const globalObj = global as any;
 
-export const userVotes = globalUserVotes;
+// In-memory database for user votes - make it global for persistence
+if (!globalObj.userVotes) {
+  globalObj.userVotes = [];
+}
+
+export const userVotes = globalObj.userVotes;
 
 export default publicProcedure
   .input(
@@ -27,7 +31,7 @@ export default publicProcedure
     const { nominationId, userId, nominationType, day } = input;
     
     // Find the nomination and update its votes
-    const nominationIndex = nominations.findIndex(nom => nom.id === nominationId);
+    const nominationIndex = nominations.findIndex((nom: Nomination) => nom.id === nominationId);
     
     if (nominationIndex === -1) {
       throw new Error(`Nomination with ID ${nominationId} not found`);

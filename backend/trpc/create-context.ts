@@ -1,9 +1,11 @@
 import { initTRPC } from '@trpc/server';
 
-// Create a new instance of tRPC
-const t = initTRPC.create();
+// Create context
+export const createContext = () => ({});
 
-// Export the router and procedure helpers
+// Initialize tRPC
+const t = initTRPC.context<typeof createContext>().create();
+
+// Export procedures and router
 export const router = t.router;
 export const publicProcedure = t.procedure;
-export const protectedProcedure = t.procedure; // Add auth middleware if needed later
