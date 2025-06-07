@@ -19,8 +19,8 @@ export default function TeamsScreen() {
     fetchTeams();
   }, []);
   
-  // Set up polling for team data
-  usePolling(fetchTeams, 10000); // Poll every 10 seconds
+  // Set up polling for team data - using object format for options
+  usePolling(fetchTeams, { interval: 10000 }); // Poll every 10 seconds
   
   // Handle manual refresh
   const onRefresh = async () => {
@@ -96,7 +96,7 @@ export default function TeamsScreen() {
         </View>
         
         {/* Team Podium */}
-        <TeamPodium teams={teams} />
+        <TeamPodium teams={sortedTeams} />
         
         {/* Team List */}
         <View style={styles.teamListContainer}>

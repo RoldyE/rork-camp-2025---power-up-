@@ -11,14 +11,14 @@ const zeroPointTeams = initialTeams.map(team => ({
 }));
 
 // In-memory database for teams and point history - make it global for persistence
-let globalTeams = (global as any).teams || [...zeroPointTeams];
+let globalTeams = ((global as any).teams || [...zeroPointTeams]) as Team[];
 (global as any).teams = globalTeams;
 
 // Export the global reference
 export let teams = globalTeams;
 
 // Separate storage for point history - also make it global
-let globalPointHistory = (global as any).pointHistory || {};
+let globalPointHistory = ((global as any).pointHistory || {}) as Record<string, PointEntry[]>;
 (global as any).pointHistory = globalPointHistory;
 
 export let pointHistory = globalPointHistory;

@@ -6,7 +6,7 @@ import { NominationType, Nomination } from "@/types";
 // In-memory database for nominations
 // Using a more persistent approach with a global variable
 // This will be shared across all imports of this module
-let globalNominations = (global as any).nominations || [...initialNominations];
+let globalNominations = ((global as any).nominations || [...initialNominations]) as Nomination[];
 (global as any).nominations = globalNominations;
 
 // Export this so other routes can access the same reference
@@ -14,7 +14,7 @@ export let nominations = globalNominations;
 
 // Map to track nominations by type and day for faster lookups
 // Also make this global to persist between server restarts
-let globalNominationsByTypeAndDay = (global as any).nominationsByTypeAndDay || {};
+let globalNominationsByTypeAndDay = ((global as any).nominationsByTypeAndDay || {}) as Record<string, Nomination[]>;
 (global as any).nominationsByTypeAndDay = globalNominationsByTypeAndDay;
 
 export const nominationsByTypeAndDay = globalNominationsByTypeAndDay;

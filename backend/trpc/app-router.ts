@@ -1,29 +1,29 @@
-import { createTRPCRouter } from "./create-context";
-import hiRoute from "./routes/example/hi/route";
-import getTeamsRoute from "./routes/teams/getTeams/route";
-import updatePointsRoute from "./routes/teams/updatePoints/route";
-import resetPointsRoute from "./routes/teams/resetPoints/route";
-import getNominationsRoute from "./routes/nominations/getNominations/route";
-import addNominationRoute from "./routes/nominations/addNomination/route";
-import voteForNominationRoute from "./routes/nominations/voteForNomination/route";
-import resetVotesRoute from "./routes/nominations/resetVotes/route";
-import getUserVotesRoute from "./routes/nominations/getUserVotes/route";
+import { router } from "./create-context";
+import hiProcedure from "./routes/example/hi/route";
+import getTeams from "./routes/teams/getTeams/route";
+import updatePoints from "./routes/teams/updatePoints/route";
+import resetPoints from "./routes/teams/resetPoints/route";
+import getNominations from "./routes/nominations/getNominations/route";
+import addNomination from "./routes/nominations/addNomination/route";
+import voteForNomination from "./routes/nominations/voteForNomination/route";
+import getUserVotes from "./routes/nominations/getUserVotes/route";
+import resetVotes from "./routes/nominations/resetVotes/route";
 
-export const appRouter = createTRPCRouter({
-  example: createTRPCRouter({
-    hi: hiRoute,
+export const appRouter = router({
+  example: router({
+    hi: hiProcedure,
   }),
-  teams: createTRPCRouter({
-    getTeams: getTeamsRoute,
-    updatePoints: updatePointsRoute,
-    resetPoints: resetPointsRoute,
+  teams: router({
+    getTeams,
+    updatePoints,
+    resetPoints,
   }),
-  nominations: createTRPCRouter({
-    getNominations: getNominationsRoute,
-    addNomination: addNominationRoute,
-    voteForNomination: voteForNominationRoute,
-    resetVotes: resetVotesRoute,
-    getUserVotes: getUserVotesRoute,
+  nominations: router({
+    getNominations,
+    addNomination,
+    voteForNomination,
+    getUserVotes,
+    resetVotes,
   }),
 });
 

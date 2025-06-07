@@ -46,7 +46,6 @@ export const useTeamStore = create<TeamState>()(
                 // Keep local team data that's not related to points
                 name: serverTeam.name || localTeam?.name,
                 color: serverTeam.color || localTeam?.color,
-                logo: serverTeam.logo || localTeam?.logo,
                 // Always use server points
                 points: serverTeam.points,
                 // Get point history from server if available

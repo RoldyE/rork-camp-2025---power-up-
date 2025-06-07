@@ -1,108 +1,88 @@
 import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
-import { Team } from "@/types";
 import { colors } from "@/constants/colors";
-import { useRouter } from "expo-router";
-import { ChevronRight } from "lucide-react-native";
+import { Team } from "@/types";
 
-export type TeamScoreCardProps = {
+export interface TeamScoreCardProps {
   team: Team;
-  rank?: number; // Added rank as optional prop
+  rank: number;
   onPress?: () => void;
-};
+}
 
 export const TeamScoreCard = ({ team, rank, onPress }: TeamScoreCardProps) => {
-  const router = useRouter();
-  
-  const handleViewDetails = () => {
-    if (onPress) {
-      onPress();
-    } else {
-      router.push(`/team-details/${team.id}`);
-    }
-  };
-  
   return (
-    <Pressable 
-      onPress={handleViewDetails} 
+    <Pressable
       style={({ pressed }) => [
-        styles.card,
+        styles.container,
         { opacity: pressed ? 0.9 : 1 }
       ]}
+      onPress={onPress}
     >
-      <View style={[styles.colorBar, { backgroundColor: team.color }]} />
-      <View style={styles.contentContainer}>
+      <View style={styles.rankContainer}>
+        <Text style={styles.rankText}>{rank}</Text>
+      </View>
+      
+      <View style={[styles.colorIndicator, { backgroundColor: team.color }]} />
+      
+      <View style={styles.infoContainer}>
         <Text style={styles.teamName}>{team.name}</Text>
-        {rank !== undefined && (
-          <Text style={styles.rankText}>Rank: #{rank}</Text>
-        )}
       </View>
+      
       <View style={styles.pointsContainer}>
-        <Text style={styles.pointsLabel}>Points</Text>
-        <Text style={styles.pointsValue}>{team.points}</Text>
-      </View>
-      <View style={styles.detailsButton}>
-        <ChevronRight size={18} color={colors.primary} />
+        <Text style={styles.pointsText}>{team.points}</Text>
+        <Text style={styles.pointsLabel}>points</Text>
       </View>
     </Pressable>
   );
 };
 
-export const TeamScoreList = () => {
-  const teams = []; // This is just a placeholder, the actual implementation is in the teams.tsx file
-  return null;
-};
-
 const styles = StyleSheet.create({
-  card: {
+  container: {
     flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.card,
     borderRadius: 12,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    marginBottom: 12,
-  },
-  colorBar: {
-    width: 8,
-  },
-  contentContainer: {
-    flex: 1,
     padding: 16,
-    justifyContent: "center",
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  rankContainer: {
+    width: 30,
+    alignItems: "center",
+  },
+  rankText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.textLight,
+  },
+  colorIndicator: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  infoContainer: {
+    flex: 1,
   },
   teamName: {
     fontSize: 16,
     fontWeight: "600",
     color: colors.text,
   },
-  rankText: {
-    fontSize: 12,
-    color: colors.textLight,
-    marginTop: 4,
-  },
   pointsContainer: {
-    padding: 16,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "flex-end",
+  },
+  pointsText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.primary,
   },
   pointsLabel: {
     fontSize: 12,
     color: colors.textLight,
-  },
-  pointsValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.primary,
-  },
-  detailsButton: {
-    width: 40,
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: `${colors.primary}10`,
   },
 });

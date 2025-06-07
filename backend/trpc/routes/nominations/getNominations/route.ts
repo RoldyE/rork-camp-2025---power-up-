@@ -8,44 +8,39 @@ export default publicProcedure
     z.object({
       type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]).optional(),
       day: z.string().optional(),
-    }).optional()
+    })
   )
   .query(({ input }) => {
-    // Log for debugging
-    console.log(`Getting nominations. Total in memory: ${nominations.length}`);
-    if (input?.type) console.log(`Filtering by type: ${input.type}`);
-    if (input?.day) console.log(`Filtering by day: ${input.day}`);
+    const { type, day } = input;
     
-    // If both type and day are specified, use the optimized lookup
-    if (input?.type && input?.day) {
-      const key = `${input.type}-${input.day}`;
-      const result = nominationsByTypeAndDay[key] || [];
-      console.log(`Found ${result.length} nominations for ${key}`);
+    // If both type and day are provided, use the map for faster lookup
+    if (type && day) {
+      const key = `${type}-${day}`;
       return {
-        nominations: result,
+        nominations: nominationsByTypeAndDay[key] || [],
         timestamp: new Date(),
       };
     }
     
-    // Otherwise filter the nominations array
-    let filteredNominations = [...nominations];
-    
-    if (input?.type) {
-      filteredNominations = filteredNominations.filter(
-        nom => nom.type === input.type
-      );
+    // If only type is provided, filter by type
+    if (type) {
+      return {
+        nominations: nominations.filter(nom => nom.type === type),
+        timestamp: new Date(),
+      };
     }
     
-    if (input?.day) {
-      filteredNominations = filteredNominations.filter(
-        nom => nom.day === input.day
-      );
+    // If only day is provided, filter by day
+    if (day) {
+      return {
+        nominations: nominations.filter(nom => nom.day === day),
+        timestamp: new Date(),
+      };
     }
     
-    console.log(`Returning ${filteredNominations.length} nominations after filtering`);
-    
+    // If neither is provided, return all nominations
     return {
-      nominations: filteredNominations,
+      nominations,
       timestamp: new Date(),
     };
   });
