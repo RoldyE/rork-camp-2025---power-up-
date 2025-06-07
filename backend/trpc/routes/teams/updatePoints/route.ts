@@ -3,6 +3,12 @@ import { publicProcedure } from "../../../create-context";
 import { teams as initialTeams } from "@/mocks/teams";
 import { PointEntry, Team } from "@/types";
 
+// Define types for global storage
+interface GlobalStorage {
+  teams?: Team[];
+  pointHistory?: Record<string, PointEntry[]>;
+}
+
 // Initialize teams with zero points instead of default values
 // This ensures all clients start with the same base state
 const zeroPointTeams = initialTeams.map(team => ({
@@ -11,15 +17,15 @@ const zeroPointTeams = initialTeams.map(team => ({
 }));
 
 // In-memory database for teams and point history - make it global for persistence
-let globalTeams = ((global as any).teams || [...zeroPointTeams]) as Team[];
-(global as any).teams = globalTeams;
+let globalTeams = ((global as unknown as GlobalStorage).teams || [...zeroPointTeams]) as Team[];
+(global as unknown as GlobalStorage).teams = globalTeams;
 
 // Export the global reference
 export let teams = globalTeams;
 
 // Separate storage for point history - also make it global
-let globalPointHistory = ((global as any).pointHistory || {}) as Record<string, PointEntry[]>;
-(global as any).pointHistory = globalPointHistory;
+let globalPointHistory = ((global as unknown as GlobalStorage).pointHistory || {}) as Record<string, PointEntry[]>;
+(global as unknown as GlobalStorage).pointHistory = globalPointHistory;
 
 export let pointHistory = globalPointHistory;
 

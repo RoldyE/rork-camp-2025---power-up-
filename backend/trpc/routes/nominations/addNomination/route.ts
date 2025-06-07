@@ -3,19 +3,25 @@ import { publicProcedure } from "../../../create-context";
 import { nominations as initialNominations } from "@/mocks/nominations";
 import { NominationType, Nomination } from "@/types";
 
+// Define types for global storage
+interface GlobalStorage {
+  nominations?: Nomination[];
+  nominationsByTypeAndDay?: Record<string, Nomination[]>;
+}
+
 // In-memory database for nominations
 // Using a more persistent approach with a global variable
 // This will be shared across all imports of this module
-let globalNominations = ((global as any).nominations || [...initialNominations]) as Nomination[];
-(global as any).nominations = globalNominations;
+let globalNominations = ((global as unknown as GlobalStorage).nominations || [...initialNominations]) as Nomination[];
+(global as unknown as GlobalStorage).nominations = globalNominations;
 
 // Export this so other routes can access the same reference
 export let nominations = globalNominations;
 
 // Map to track nominations by type and day for faster lookups
 // Also make this global to persist between server restarts
-let globalNominationsByTypeAndDay = ((global as any).nominationsByTypeAndDay || {}) as Record<string, Nomination[]>;
-(global as any).nominationsByTypeAndDay = globalNominationsByTypeAndDay;
+let globalNominationsByTypeAndDay = ((global as unknown as GlobalStorage).nominationsByTypeAndDay || {}) as Record<string, Nomination[]>;
+(global as unknown as GlobalStorage).nominationsByTypeAndDay = globalNominationsByTypeAndDay;
 
 export const nominationsByTypeAndDay = globalNominationsByTypeAndDay;
 

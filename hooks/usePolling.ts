@@ -1,42 +1,57 @@
 import { useEffect, useRef } from 'react';
 
-export interface PollingOptions {
-  interval: number;
+interface PollingOptions {
   enabled?: boolean;
+  interval?: number;
+  onError?: (error: Error) => void;
 }
 
 /**
- * Custom hook for polling an API at regular intervals
- * @param callback Function to call on each interval
- * @param options Polling options (interval in ms, enabled flag)
+ * A hook that polls a function at a specified interval
+ * @param fn The function to poll
+ * @param options Polling options
  */
-export function usePolling(callback: () => Promise<void> | void, options: PollingOptions | number) {
-  // Handle both object options and direct interval number
-  const resolvedOptions: PollingOptions = typeof options === 'number' 
-    ? { interval: options, enabled: true }
-    : { interval: 5000, enabled: true, ...options };
+export function usePolling(
+  fn: () => Promise<void>,
+  options: PollingOptions = {}
+) {
+  const { 
+    enabled = true, 
+    interval = 5000, 
+    onError 
+  } = options;
   
-  const { interval, enabled = true } = resolvedOptions;
-  const savedCallback = useRef<() => Promise<void> | void>(callback);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
 
-  // Remember the latest callback
   useEffect(() => {
-    savedCallback.current = callback;
-  }, [callback]);
-
-  // Set up the interval
-  useEffect(() => {
-    if (!enabled) return;
-
-    const tick = async () => {
+    mountedRef.current = true;
+    
+    const execute = async () => {
+      if (!enabled || !mountedRef.current) return;
+      
       try {
-        await savedCallback.current();
+        await fn();
       } catch (error) {
-        console.error('Error in polling callback:', error);
+        if (onError && error instanceof Error) {
+          onError(error);
+        } else {
+          console.error('Polling error:', error);
+        }
+      }
+      
+      if (mountedRef.current) {
+        timeoutRef.current = setTimeout(execute, interval);
       }
     };
-
-    const id = setInterval(tick, interval);
-    return () => clearInterval(id);
-  }, [interval, enabled]);
+    
+    execute();
+    
+    return () => {
+      mountedRef.current = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [fn, enabled, interval, onError]);
 }

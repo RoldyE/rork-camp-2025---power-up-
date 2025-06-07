@@ -1,107 +1,74 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable } from "react-native";
-import { Stack } from "expo-router";
+import React, { useEffect } from "react";
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from "react-native";
+import { useRouter } from "expo-router";
 import { useTeamStore } from "@/store/teamStore";
 import { TeamScoreCard } from "@/components/TeamScoreCard";
 import { TeamPodium } from "@/components/TeamPodium";
 import { colors } from "@/constants/colors";
-import { useRouter } from "expo-router";
 import { usePolling } from "@/hooks/usePolling";
 import { RefreshCw } from "lucide-react-native";
 
 export default function TeamsScreen() {
   const router = useRouter();
-  const { teams, fetchTeams, isLoading, lastUpdated } = useTeamStore();
-  const [refreshing, setRefreshing] = useState(false);
+  const { teams, isLoading, fetchTeams, lastUpdated } = useTeamStore();
   
-  // Fetch teams on initial load
+  // Initial fetch
   useEffect(() => {
     fetchTeams();
   }, []);
   
-  // Set up polling for team data - using object format for options
-  usePolling(fetchTeams, { interval: 10000 }); // Poll every 10 seconds
-  
-  // Handle manual refresh
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchTeams();
-    setRefreshing(false);
-  };
+  // Set up polling to keep data fresh
+  usePolling(fetchTeams, { 
+    enabled: true,
+    interval: 10000, // Poll every 10 seconds
+    onError: (error) => console.error("Polling error:", error)
+  });
   
   // Sort teams by points (highest first)
   const sortedTeams = [...teams].sort((a, b) => b.points - a.points);
   
-  // Format last updated time
-  const formatLastUpdated = () => {
-    if (!lastUpdated) return "Never";
-    
-    const now = new Date();
-    const diff = now.getTime() - lastUpdated.getTime();
-    
-    // If less than a minute ago
-    if (diff < 60000) {
-      return "Just now";
-    }
-    
-    // If less than an hour ago
-    if (diff < 3600000) {
-      const minutes = Math.floor(diff / 60000);
-      return `${minutes} minute${minutes !== 1 ? "s" : ""} ago`;
-    }
-    
-    // Otherwise show the time
-    return lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
-  
+  // Navigate to team details
   const handleTeamPress = (teamId: string) => {
     router.push(`/team-details/${teamId}`);
   };
   
+  // Manual refresh
+  const handleRefresh = () => {
+    fetchTeams();
+  };
+  
   return (
-    <View style={styles.container}>
-      <Stack.Screen 
-        options={{
-          title: "Team Standings",
-          headerRight: () => (
-            <Pressable 
-              onPress={onRefresh}
-              style={({ pressed }) => [
-                styles.refreshButton,
-                { opacity: pressed ? 0.7 : 1 }
-              ]}
-            >
-              <RefreshCw size={20} color={colors.primary} />
-            </Pressable>
-          ),
-        }} 
-      />
-      
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Team Leaderboard</Text>
+        <TouchableOpacity 
+          style={styles.refreshButton} 
+          onPress={handleRefresh}
+          disabled={isLoading}
+        >
+          <RefreshCw 
+            size={20} 
+            color={colors.primary} 
+            style={isLoading ? styles.rotating : undefined} 
           />
-        }
-      >
-        {/* Last updated indicator */}
-        <View style={styles.lastUpdatedContainer}>
-          <Text style={styles.lastUpdatedText}>
-            Last updated: {formatLastUpdated()}
-          </Text>
+        </TouchableOpacity>
+      </View>
+      
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
-        
-        {/* Team Podium */}
-        <TeamPodium teams={sortedTeams} />
-        
-        {/* Team List */}
-        <View style={styles.teamListContainer}>
-          <Text style={styles.sectionTitle}>All Teams</Text>
+      )}
+      
+      {!isLoading && teams.length > 0 && (
+        <>
+          {/* Podium View */}
+          <TeamPodium teams={teams} />
           
+          <View style={styles.divider} />
+          
+          {/* List View */}
+          <Text style={styles.sectionTitle}>All Teams</Text>
           {sortedTeams.map((team, index) => (
             <TeamScoreCard
               key={team.id}
@@ -110,9 +77,21 @@ export default function TeamsScreen() {
               onPress={() => handleTeamPress(team.id)}
             />
           ))}
+          
+          {lastUpdated && (
+            <Text style={styles.lastUpdated}>
+              Last updated: {new Date(lastUpdated).toLocaleTimeString()}
+            </Text>
+          )}
+        </>
+      )}
+      
+      {!isLoading && teams.length === 0 && (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No teams found</Text>
         </View>
-      </ScrollView>
-    </View>
+      )}
+    </ScrollView>
   );
 }
 
@@ -121,28 +100,56 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  scrollContent: {
-    paddingBottom: 24,
-  },
-  lastUpdatedContainer: {
-    padding: 12,
-    alignItems: "center",
-  },
-  lastUpdatedText: {
-    fontSize: 12,
-    color: colors.textLight,
-  },
-  teamListContainer: {
+  contentContainer: {
     padding: 16,
+    paddingBottom: 32,
   },
-  sectionTitle: {
-    fontSize: 20,
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 24,
     fontWeight: "700",
     color: colors.text,
-    marginBottom: 16,
   },
   refreshButton: {
     padding: 8,
-    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: colors.card,
+  },
+  rotating: {
+    transform: [{ rotate: "45deg" }],
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 16,
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 16,
+    color: colors.textLight,
+  },
+  lastUpdated: {
+    marginTop: 16,
+    textAlign: "center",
+    fontSize: 12,
+    color: colors.textLight,
   },
 });

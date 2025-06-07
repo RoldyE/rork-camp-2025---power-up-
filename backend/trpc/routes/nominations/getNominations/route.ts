@@ -13,34 +13,30 @@ export default publicProcedure
   .query(({ input }) => {
     const { type, day } = input;
     
-    // If both type and day are provided, use the map for faster lookup
     if (type && day) {
+      // Return nominations of the specified type and day
       const key = `${type}-${day}`;
       return {
         nominations: nominationsByTypeAndDay[key] || [],
         timestamp: new Date(),
       };
-    }
-    
-    // If only type is provided, filter by type
-    if (type) {
+    } else if (type) {
+      // Return all nominations of the specified type
       return {
         nominations: nominations.filter(nom => nom.type === type),
         timestamp: new Date(),
       };
-    }
-    
-    // If only day is provided, filter by day
-    if (day) {
+    } else if (day) {
+      // Return all nominations for the specified day
       return {
         nominations: nominations.filter(nom => nom.day === day),
         timestamp: new Date(),
       };
+    } else {
+      // Return all nominations
+      return {
+        nominations,
+        timestamp: new Date(),
+      };
     }
-    
-    // If neither is provided, return all nominations
-    return {
-      nominations,
-      timestamp: new Date(),
-    };
   });

@@ -3,9 +3,14 @@ import { publicProcedure } from "../../../create-context";
 import { nominations, nominationsByTypeAndDay } from "../addNomination/route";
 import { NominationType, UserVote, Nomination } from "@/types";
 
+// Define types for global storage
+interface GlobalStorage {
+  userVotes?: UserVote[];
+}
+
 // In-memory database for user votes - make it global for persistence
-let globalUserVotes = ((global as any).userVotes || []) as UserVote[];
-(global as any).userVotes = globalUserVotes;
+let globalUserVotes = ((global as unknown as GlobalStorage).userVotes || []) as UserVote[];
+(global as unknown as GlobalStorage).userVotes = globalUserVotes;
 
 export const userVotes = globalUserVotes;
 
