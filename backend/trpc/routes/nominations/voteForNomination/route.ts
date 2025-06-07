@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { nominations, nominationsByTypeAndDay } from "../addNomination/route";
-import { NominationType, UserVote } from "@/types";
+import { NominationType, UserVote, Nomination } from "@/types";
 
 // In-memory database for user votes - make it global for persistence
 let globalUserVotes = (global as any).userVotes || [];

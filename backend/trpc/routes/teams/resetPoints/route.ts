@@ -7,26 +7,29 @@ export default publicProcedure
   .input(
     z.object({
       teamId: z.string().optional(),
-    }).optional()
+    })
   )
   .mutation(({ input }) => {
-    const { teamId } = input || {};
+    const { teamId } = input;
     
     if (teamId) {
       // Reset points for a specific team
-      const teamIndex = teams.findIndex(team => team.id === teamId);
+      const teamIndex = teams.findIndex((team: Team) => team.id === teamId);
       
-      if (teamIndex !== -1) {
-        teams[teamIndex] = {
-          ...teams[teamIndex],
-          points: 0
-        };
-        
-        // Clear point history for this team
-        pointHistory[teamId] = [];
-        
-        console.log(`Reset points for team ${teamId}`);
+      if (teamIndex === -1) {
+        throw new Error(`Team with ID ${teamId} not found`);
       }
+      
+      // Reset the team's points
+      teams[teamIndex] = {
+        ...teams[teamIndex],
+        points: 0
+      };
+      
+      // Clear the team's point history
+      pointHistory[teamId] = [];
+      
+      console.log(`Reset points for team ${teamId}`);
     } else {
       // Reset points for all teams
       teams.forEach((team: Team, index: number) => {
@@ -35,7 +38,7 @@ export default publicProcedure
           points: 0
         };
         
-        // Clear point history for all teams
+        // Clear the team's point history
         pointHistory[team.id] = [];
       });
       

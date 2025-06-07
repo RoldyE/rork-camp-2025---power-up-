@@ -7,7 +7,7 @@ import { ChevronRight } from "lucide-react-native";
 
 export type TeamScoreCardProps = {
   team: Team;
-  rank?: number; // Make rank optional
+  rank?: number; // Added rank as optional prop
   onPress?: () => void;
 };
 

@@ -2,9 +2,9 @@ export type Team = {
   id: string;
   name: string;
   color: string;
-  logo?: string; // Make logo optional
   points: number;
-  pointHistory: PointEntry[];
+  logo?: string; // Added logo property as optional
+  pointHistory?: PointEntry[];
 };
 
 export type PointEntry = {
@@ -12,6 +12,29 @@ export type PointEntry = {
   points: number;
   reason: string;
   date: string;
+};
+
+export type Game = {
+  id: string;
+  title: string;
+  description: string;
+  location: string;
+  date: string;
+  time: string;
+  teams: string[];
+  winner?: string;
+  score?: {
+    [teamId: string]: number;
+  };
+};
+
+export type Camper = {
+  id: string;
+  name: string;
+  age: number;
+  teamId: string;
+  cabin: string;
+  photo?: string;
 };
 
 export type NominationType = "daily" | "sportsmanship" | "bravery" | "service" | "scholar" | "other";
@@ -25,7 +48,6 @@ export type Nomination = {
   votes: number;
 };
 
-// Type for user votes
 export type UserVote = {
   userId: string;
   nominationType: NominationType;
@@ -33,11 +55,20 @@ export type UserVote = {
   timestamp: string;
 };
 
-// Type for global variables in backend
+export type Resource = {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  category: string;
+  icon: string;
+};
+
+// Type for global variables in backend routes
 declare global {
   var teams: Team[];
-  var pointHistory: Record<string, PointEntry[]>;
   var nominations: Nomination[];
-  var nominationsByTypeAndDay: Record<string, Nomination[]>;
+  var pointHistory: { [teamId: string]: PointEntry[] };
+  var nominationsByTypeAndDay: { [key: string]: Nomination[] };
   var userVotes: UserVote[];
 }
