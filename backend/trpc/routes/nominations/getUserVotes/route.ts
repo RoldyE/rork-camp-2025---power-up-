@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { userVotes } from "../voteForNomination/route";
-import { NominationType } from "@/types";
+import { NominationType, UserVote } from "@/types";
 
 export default publicProcedure
   .input(
@@ -15,16 +15,16 @@ export default publicProcedure
     const { userId, nominationType, day } = input;
     
     // Filter votes by user ID
-    let filteredVotes = userVotes.filter(vote => vote.userId === userId);
+    let filteredVotes = userVotes.filter((vote: UserVote) => vote.userId === userId);
     
     // Further filter by nomination type if provided
     if (nominationType) {
-      filteredVotes = filteredVotes.filter(vote => vote.nominationType === nominationType);
+      filteredVotes = filteredVotes.filter((vote: UserVote) => vote.nominationType === nominationType);
     }
     
     // Further filter by day if provided
     if (day) {
-      filteredVotes = filteredVotes.filter(vote => vote.day === day);
+      filteredVotes = filteredVotes.filter((vote: UserVote) => vote.day === day);
     }
     
     console.log(`Found ${filteredVotes.length} votes for user ${userId}`);

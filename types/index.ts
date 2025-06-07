@@ -2,8 +2,9 @@ export type Team = {
   id: string;
   name: string;
   color: string;
+  logo?: string; // Make logo optional
   points: number;
-  pointHistory?: PointEntry[];
+  pointHistory: PointEntry[];
 };
 
 export type PointEntry = {
@@ -13,64 +14,30 @@ export type PointEntry = {
   date: string;
 };
 
-export type ScheduleItem = {
-  id: string;
-  title: string;
-  description: string;
-  startTime: string;
-  endTime: string;
-  location: string;
-  day: string;
-};
-
-export type GameScheduleItem = {
-  id: string;
-  title: string;
-  description: string;
-  startTime: string;
-  endTime: string;
-  location: string;
-  day: string;
-  teams: string[];
-  instructions: string;
-};
-
-export type Camper = {
-  id: string;
-  name: string;
-  teamId: string;
-  image?: string;
-  facebookId?: string;
-};
-
-export type NominationType = 'daily' | 'sportsmanship' | 'bravery' | 'service' | 'scholar' | 'other';
+export type NominationType = "daily" | "sportsmanship" | "bravery" | "service" | "scholar" | "other";
 
 export type Nomination = {
   id: string;
   camperId: string;
   reason: string;
-  votes: number;
   day: string;
   type: NominationType;
+  votes: number;
 };
 
-export type Resource = {
-  id: string;
-  name: string;
-  description: string;
-  type: "pdf" | "doc" | "image" | "other" | "link";
-  uri: string;
-  size: number;
-  dateAdded: string;
-  category: "devotional" | "activity" | "general" | "scoring" | "communication";
-};
-
-export type Notification = {
-  id: string;
-  title: string;
-  message: string;
+// Type for user votes
+export type UserVote = {
+  userId: string;
+  nominationType: NominationType;
+  day: string;
   timestamp: string;
-  read: boolean;
-  type: 'schedule' | 'game' | 'nomination' | 'team' | 'general';
-  link?: string;
 };
+
+// Type for global variables in backend
+declare global {
+  var teams: Team[];
+  var pointHistory: Record<string, PointEntry[]>;
+  var nominations: Nomination[];
+  var nominationsByTypeAndDay: Record<string, Nomination[]>;
+  var userVotes: UserVote[];
+}

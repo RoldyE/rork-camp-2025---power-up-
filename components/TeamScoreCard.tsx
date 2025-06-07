@@ -5,16 +5,21 @@ import { colors } from "@/constants/colors";
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 
-type TeamScoreCardProps = {
+export type TeamScoreCardProps = {
   team: Team;
+  rank?: number; // Make rank optional
   onPress?: () => void;
 };
 
-export const TeamScoreCard = ({ team, onPress }: TeamScoreCardProps) => {
+export const TeamScoreCard = ({ team, rank, onPress }: TeamScoreCardProps) => {
   const router = useRouter();
   
   const handleViewDetails = () => {
-    router.push(`/team-details/${team.id}`);
+    if (onPress) {
+      onPress();
+    } else {
+      router.push(`/team-details/${team.id}`);
+    }
   };
   
   return (
@@ -28,6 +33,9 @@ export const TeamScoreCard = ({ team, onPress }: TeamScoreCardProps) => {
       <View style={[styles.colorBar, { backgroundColor: team.color }]} />
       <View style={styles.contentContainer}>
         <Text style={styles.teamName}>{team.name}</Text>
+        {rank !== undefined && (
+          <Text style={styles.rankText}>Rank: #{rank}</Text>
+        )}
       </View>
       <View style={styles.pointsContainer}>
         <Text style={styles.pointsLabel}>Points</Text>
@@ -70,6 +78,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: colors.text,
+  },
+  rankText: {
+    fontSize: 12,
+    color: colors.textLight,
+    marginTop: 4,
   },
   pointsContainer: {
     padding: 16,

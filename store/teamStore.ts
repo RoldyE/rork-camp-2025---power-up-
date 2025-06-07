@@ -37,7 +37,7 @@ export const useTeamStore = create<TeamState>()(
           
           if (result && result.teams) {
             // Always use server data as source of truth for points
-            const updatedTeams = result.teams.map(serverTeam => {
+            const updatedTeams = result.teams.map((serverTeam: Team) => {
               // Find the local team to preserve any local data we want to keep
               const localTeam = get().teams.find(t => t.id === serverTeam.id);
               

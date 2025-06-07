@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { teams, pointHistory } from "../updatePoints/route";
+import { Team } from "@/types";
 
 export default publicProcedure
   .input(
@@ -28,7 +29,7 @@ export default publicProcedure
       }
     } else {
       // Reset points for all teams
-      teams.forEach((team, index) => {
+      teams.forEach((team: Team, index: number) => {
         teams[index] = {
           ...team,
           points: 0

@@ -1,16 +1,9 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Nomination, NominationType } from "@/types";
+import { Nomination, NominationType, UserVote } from "@/types";
 import { nominations as initialNominations } from "@/mocks/nominations";
 import { trpcClient } from "@/lib/trpc";
-
-interface UserVote {
-  userId: string;
-  nominationType: NominationType;
-  day: string;
-  timestamp: string;
-}
 
 interface NominationState {
   nominations: Nomination[];
@@ -115,7 +108,7 @@ export const useNominationStore = create<NominationState>()(
               );
               
               // Add new votes from the result
-              result.votes.forEach(vote => {
+              result.votes.forEach((vote: UserVote) => {
                 existingVotesMap.set(
                   `${vote.userId}-${vote.nominationType}-${vote.day}-${vote.timestamp}`,
                   vote
@@ -294,7 +287,7 @@ export const useNominationStore = create<NominationState>()(
       },
       
       recordUserVote: (userId, nominationType, day) => {
-        const newVote = {
+        const newVote: UserVote = {
           userId,
           nominationType,
           day,

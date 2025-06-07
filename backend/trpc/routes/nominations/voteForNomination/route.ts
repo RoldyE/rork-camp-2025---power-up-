@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { nominations, nominationsByTypeAndDay } from "../addNomination/route";
-import { NominationType } from "@/types";
+import { NominationType, UserVote } from "@/types";
 
 // In-memory database for user votes - make it global for persistence
-let globalUserVotes = global.userVotes || [];
-global.userVotes = globalUserVotes;
+let globalUserVotes = (global as any).userVotes || [];
+(global as any).userVotes = globalUserVotes;
 
 export const userVotes = globalUserVotes;
 
@@ -37,7 +37,7 @@ export default publicProcedure
     // Also update the nomination in the type-day map
     const key = `${nominationType}-${day}`;
     if (nominationsByTypeAndDay[key]) {
-      const mapIndex = nominationsByTypeAndDay[key].findIndex(nom => nom.id === nominationId);
+      const mapIndex = nominationsByTypeAndDay[key].findIndex((nom: Nomination) => nom.id === nominationId);
       if (mapIndex !== -1) {
         nominationsByTypeAndDay[key][mapIndex] = {
           ...nominationsByTypeAndDay[key][mapIndex],
