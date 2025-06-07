@@ -6,7 +6,7 @@ import { NominationCard } from "@/components/NominationCard";
 import { useNominationStore } from "@/store/nominationStore";
 import { colors } from "@/constants/colors";
 import { Link, useRouter } from "expo-router";
-import { Plus, Award, RotateCcw } from "lucide-react-native";
+import { Plus, Award, RotateCcw, RefreshCw } from "lucide-react-native";
 import { NominationTypeSelector } from "@/components/NominationTypeSelector";
 import { NominationType } from "@/types";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -45,11 +45,11 @@ export default function NominationsScreen() {
   
   // Set up polling to keep nominations data fresh - DISABLED automatic polling
   const { poll } = usePolling(
-    () => fetchNominations(),
+    () => fetchNominations(selectedType, selectedType === "daily" ? selectedDay : undefined),
     { 
-      interval: 300000, // Poll every 5 minutes
+      interval: 30000, // Poll every 30 seconds
       immediate: false, // Don't poll immediately on mount (we already fetch in useEffect)
-      enabled: false // Disable automatic polling completely
+      enabled: true // Enable automatic polling
     }
   );
   
@@ -65,7 +65,7 @@ export default function NominationsScreen() {
     return () => {
       subscription.remove();
     };
-  }, [poll]);
+  }, [poll, selectedType, selectedDay]);
   
   // Get nominations based on type - daily uses the selected day, others show all days
   const displayNominations = selectedType === "daily" 
@@ -122,6 +122,20 @@ export default function NominationsScreen() {
       pathname: "/special-nominations",
       params: { type: selectedType !== "daily" ? selectedType : "sportsmanship" }
     });
+  };
+  
+  const handleManualRefresh = async () => {
+    try {
+      if (selectedType === "daily") {
+        await fetchNominations(selectedType, selectedDay);
+      } else {
+        await fetchNominations(selectedType);
+      }
+      Alert.alert("Refreshed", "Nominations have been updated.");
+    } catch (error) {
+      console.error("Error refreshing nominations:", error);
+      Alert.alert("Error", "Failed to refresh nominations. Please try again.");
+    }
   };
   
   return (
@@ -190,6 +204,13 @@ export default function NominationsScreen() {
           onPress={handleViewSpecialNominations}
         >
           <Award size={18} color="white" />
+        </Pressable>
+        
+        <Pressable 
+          style={styles.refreshButton}
+          onPress={handleManualRefresh}
+        >
+          <RefreshCw size={18} color="white" />
         </Pressable>
         
         {displayNominations.length > 0 && (
@@ -279,6 +300,19 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  refreshButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",

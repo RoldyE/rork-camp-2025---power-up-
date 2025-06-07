@@ -15,23 +15,17 @@ export default publicProcedure
       // Reset points for a specific team
       const teamIndex = teams.findIndex(team => team.id === teamId);
       
-      if (teamIndex === -1) {
-        throw new Error(`Team with ID ${teamId} not found`);
+      if (teamIndex !== -1) {
+        teams[teamIndex] = {
+          ...teams[teamIndex],
+          points: 0
+        };
+        
+        // Clear point history for this team
+        pointHistory[teamId] = [];
+        
+        console.log(`Reset points for team ${teamId}`);
       }
-      
-      teams[teamIndex] = {
-        ...teams[teamIndex],
-        points: 0
-      };
-      
-      // Clear point history for this team
-      pointHistory[teamId] = [];
-      
-      return {
-        success: true,
-        team: teams[teamIndex],
-        timestamp: new Date(),
-      };
     } else {
       // Reset points for all teams
       teams.forEach((team, index) => {
@@ -44,9 +38,11 @@ export default publicProcedure
         pointHistory[team.id] = [];
       });
       
-      return {
-        success: true,
-        timestamp: new Date(),
-      };
+      console.log("Reset points for all teams");
     }
+    
+    return {
+      success: true,
+      timestamp: new Date(),
+    };
   });

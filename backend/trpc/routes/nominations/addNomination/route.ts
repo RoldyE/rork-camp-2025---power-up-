@@ -4,21 +4,32 @@ import { nominations as initialNominations } from "@/mocks/nominations";
 import { NominationType, Nomination } from "@/types";
 
 // In-memory database for nominations
+// Using a more persistent approach with a global variable
+// This will be shared across all imports of this module
+let globalNominations = global.nominations || [...initialNominations];
+global.nominations = globalNominations;
+
 // Export this so other routes can access the same reference
-export let nominations: Nomination[] = [...initialNominations];
+export let nominations = globalNominations;
 
 // Map to track nominations by type and day for faster lookups
-export const nominationsByTypeAndDay: Record<string, Nomination[]> = {};
+// Also make this global to persist between server restarts
+let globalNominationsByTypeAndDay = global.nominationsByTypeAndDay || {};
+global.nominationsByTypeAndDay = globalNominationsByTypeAndDay;
 
-// Initialize the map
+export const nominationsByTypeAndDay = globalNominationsByTypeAndDay;
+
+// Initialize the map if it's empty
 function initializeNominationMap() {
-  nominations.forEach(nom => {
-    const key = `${nom.type}-${nom.day}`;
-    if (!nominationsByTypeAndDay[key]) {
-      nominationsByTypeAndDay[key] = [];
-    }
-    nominationsByTypeAndDay[key].push(nom);
-  });
+  if (Object.keys(nominationsByTypeAndDay).length === 0) {
+    nominations.forEach(nom => {
+      const key = `${nom.type}-${nom.day}`;
+      if (!nominationsByTypeAndDay[key]) {
+        nominationsByTypeAndDay[key] = [];
+      }
+      nominationsByTypeAndDay[key].push(nom);
+    });
+  }
 }
 
 // Call initialization
@@ -55,6 +66,9 @@ export default publicProcedure
       nominationsByTypeAndDay[key] = [];
     }
     nominationsByTypeAndDay[key].push(newNomination);
+    
+    // Log for debugging
+    console.log(`Added nomination: ${type} for day ${day}. Total nominations: ${nominations.length}`);
     
     return {
       success: true,

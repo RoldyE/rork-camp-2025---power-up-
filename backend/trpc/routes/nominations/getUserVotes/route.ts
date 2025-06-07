@@ -14,15 +14,20 @@ export default publicProcedure
   .query(({ input }) => {
     const { userId, nominationType, day } = input;
     
+    // Filter votes by user ID
     let filteredVotes = userVotes.filter(vote => vote.userId === userId);
     
+    // Further filter by nomination type if provided
     if (nominationType) {
       filteredVotes = filteredVotes.filter(vote => vote.nominationType === nominationType);
     }
     
+    // Further filter by day if provided
     if (day) {
       filteredVotes = filteredVotes.filter(vote => vote.day === day);
     }
+    
+    console.log(`Found ${filteredVotes.length} votes for user ${userId}`);
     
     return {
       votes: filteredVotes,

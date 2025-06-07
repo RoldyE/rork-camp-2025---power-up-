@@ -16,7 +16,7 @@ type NominationCardProps = {
 };
 
 export const NominationCard = ({ nomination, onDelete }: NominationCardProps) => {
-  const { voteForNomination, deleteNomination, hasUserVoted } = useNominationStore();
+  const { voteForNomination, deleteNomination, hasUserVoted, getUserVoteCount } = useNominationStore();
   const { userProfile } = useAuthStore();
   const camper = campers.find((c) => c.id === nomination.camperId);
   const team = camper ? teams.find((t) => t.id === camper.teamId) : null;
@@ -34,14 +34,21 @@ export const NominationCard = ({ nomination, onDelete }: NominationCardProps) =>
     
     // Check if user has already voted for this nomination type
     const hasVoted = hasUserVoted(userProfile.id, nomination.type);
+    const voteCount = getUserVoteCount(userProfile.id, nomination.type, nomination.type === "daily" ? nomination.day : "all");
     
-    if (hasVoted) {
+    if (hasVoted || voteCount >= 2) {
       Alert.alert("Already Voted", "You have already used your votes for this category");
       return;
     }
     
-    // Record the vote
-    await voteForNomination(nomination.id, userProfile.id, nomination.type, nomination.day);
+    try {
+      // Record the vote
+      await voteForNomination(nomination.id, userProfile.id, nomination.type, nomination.day);
+      Alert.alert("Vote Recorded", "Your vote has been counted!");
+    } catch (error) {
+      console.error("Error voting:", error);
+      Alert.alert("Error", "Failed to record your vote. Please try again.");
+    }
   };
   
   const handleDelete = () => {
@@ -63,7 +70,7 @@ export const NominationCard = ({ nomination, onDelete }: NominationCardProps) =>
   };
   
   return (
-    <View style={styles.card}>
+    <Pressable style={styles.card}>
       <View style={styles.header}>
         <View style={styles.camperInfo}>
           <View style={styles.imageContainer}>
@@ -102,6 +109,10 @@ export const NominationCard = ({ nomination, onDelete }: NominationCardProps) =>
         <Text style={[styles.typeBadgeText, { color: typeColor }]}>{typeLabel}</Text>
       </View>
       
+      <View style={styles.dayBadge}>
+        <Text style={styles.dayBadgeText}>{nomination.day}</Text>
+      </View>
+      
       <View style={styles.reasonContainer}>
         <Text style={styles.reasonLabel}>Nomination Reason:</Text>
         <Text style={styles.reason}>{nomination.reason}</Text>
@@ -120,7 +131,7 @@ export const NominationCard = ({ nomination, onDelete }: NominationCardProps) =>
           <Trash2 size={16} color={colors.error} />
         </Pressable>
       </View>
-    </View>
+    </Pressable>
   );
 };
 
@@ -202,11 +213,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   typeBadgeText: {
     fontSize: 12,
     fontWeight: "600",
+  },
+  dayBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: colors.secondary + "20",
+  },
+  dayBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.secondary,
   },
   reasonContainer: {
     marginBottom: 16,

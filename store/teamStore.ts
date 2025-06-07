@@ -38,11 +38,19 @@ export const useTeamStore = create<TeamState>()(
           if (result && result.teams) {
             // Always use server data as source of truth for points
             const updatedTeams = result.teams.map(serverTeam => {
+              // Find the local team to preserve any local data we want to keep
               const localTeam = get().teams.find(t => t.id === serverTeam.id);
+              
               return {
                 ...serverTeam,
-                // Keep local point history if it exists and merge with any new entries
-                pointHistory: localTeam?.pointHistory || []
+                // Keep local team data that's not related to points
+                name: serverTeam.name || localTeam?.name,
+                color: serverTeam.color || localTeam?.color,
+                logo: serverTeam.logo || localTeam?.logo,
+                // Always use server points
+                points: serverTeam.points,
+                // Get point history from server if available
+                pointHistory: result.pointHistory?.[serverTeam.id] || localTeam?.pointHistory || []
               };
             });
             
@@ -72,35 +80,10 @@ export const useTeamStore = create<TeamState>()(
               reason
             });
             
-            // Only update local state if server update was successful
-            if (result && result.team) {
-              set((state) => {
-                const updatedTeams = state.teams.map((team) =>
-                  team.id === teamId
-                    ? { 
-                        ...team,
-                        points: result.team.points, // Use server points
-                        pointHistory: [
-                          ...(team.pointHistory || []),
-                          {
-                            id: Date.now().toString(),
-                            points,
-                            reason,
-                            date: new Date().toISOString()
-                          }
-                        ]
-                      }
-                    : team
-                );
-                
-                return {
-                  teams: updatedTeams,
-                  isLoading: false
-                };
-              });
-            } else {
-              set({ isLoading: false });
-            }
+            // Fetch updated teams from server to ensure consistency
+            await get().fetchTeams();
+            
+            set({ isLoading: false });
           } catch (serverError) {
             console.error("Server error adding points:", serverError);
             set({ isLoading: false });
@@ -119,19 +102,10 @@ export const useTeamStore = create<TeamState>()(
           try {
             await trpcClient.teams.resetPoints.mutate({});
             
-            // Update local state after server update
-            set((state) => {
-              const resetTeams = state.teams.map((team) => ({ 
-                ...team, 
-                points: 0,
-                pointHistory: [] 
-              }));
-              
-              return {
-                teams: resetTeams,
-                isLoading: false
-              };
-            });
+            // Fetch updated teams from server
+            await get().fetchTeams();
+            
+            set({ isLoading: false });
           } catch (serverError) {
             console.error("Server error resetting points:", serverError);
             set({ isLoading: false });
@@ -150,19 +124,10 @@ export const useTeamStore = create<TeamState>()(
           try {
             await trpcClient.teams.resetPoints.mutate({ teamId });
             
-            // Update local state after server update
-            set((state) => {
-              const updatedTeams = state.teams.map((team) => 
-                team.id === teamId 
-                  ? { ...team, points: 0, pointHistory: [] } 
-                  : team
-              );
-              
-              return {
-                teams: updatedTeams,
-                isLoading: false
-              };
-            });
+            // Fetch updated teams from server
+            await get().fetchTeams();
+            
+            set({ isLoading: false });
           } catch (serverError) {
             console.error("Server error resetting team points:", serverError);
             set({ isLoading: false });
@@ -182,8 +147,7 @@ export const useTeamStore = create<TeamState>()(
       name: "team-storage",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        // Persist teams to prevent resetting to default values
-        teams: state.teams,
+        // Don't persist teams locally - they come from server
         lastUpdated: state.lastUpdated
       }),
     }

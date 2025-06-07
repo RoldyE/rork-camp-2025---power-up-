@@ -1,15 +1,13 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { nominations } from "../addNomination/route";
+import { nominations, nominationsByTypeAndDay } from "../addNomination/route";
 import { NominationType } from "@/types";
 
-// In-memory database for user votes
-export const userVotes: Array<{
-  userId: string;
-  nominationType: NominationType;
-  day: string;
-  timestamp: string;
-}> = [];
+// In-memory database for user votes - make it global for persistence
+let globalUserVotes = global.userVotes || [];
+global.userVotes = globalUserVotes;
+
+export const userVotes = globalUserVotes;
 
 export default publicProcedure
   .input(
@@ -36,6 +34,18 @@ export default publicProcedure
       votes: nominations[nominationIndex].votes + 1
     };
     
+    // Also update the nomination in the type-day map
+    const key = `${nominationType}-${day}`;
+    if (nominationsByTypeAndDay[key]) {
+      const mapIndex = nominationsByTypeAndDay[key].findIndex(nom => nom.id === nominationId);
+      if (mapIndex !== -1) {
+        nominationsByTypeAndDay[key][mapIndex] = {
+          ...nominationsByTypeAndDay[key][mapIndex],
+          votes: nominationsByTypeAndDay[key][mapIndex].votes + 1
+        };
+      }
+    }
+    
     // Record the user vote
     userVotes.push({
       userId,
@@ -43,6 +53,8 @@ export default publicProcedure
       day,
       timestamp: new Date().toISOString(),
     });
+    
+    console.log(`Vote recorded for nomination ${nominationId}. New vote count: ${nominations[nominationIndex].votes}`);
     
     return {
       success: true,

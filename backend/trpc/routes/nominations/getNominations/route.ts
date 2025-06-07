@@ -11,11 +11,18 @@ export default publicProcedure
     }).optional()
   )
   .query(({ input }) => {
+    // Log for debugging
+    console.log(`Getting nominations. Total in memory: ${nominations.length}`);
+    if (input?.type) console.log(`Filtering by type: ${input.type}`);
+    if (input?.day) console.log(`Filtering by day: ${input.day}`);
+    
     // If both type and day are specified, use the optimized lookup
     if (input?.type && input?.day) {
       const key = `${input.type}-${input.day}`;
+      const result = nominationsByTypeAndDay[key] || [];
+      console.log(`Found ${result.length} nominations for ${key}`);
       return {
-        nominations: nominationsByTypeAndDay[key] || [],
+        nominations: result,
         timestamp: new Date(),
       };
     }
@@ -34,6 +41,8 @@ export default publicProcedure
         nom => nom.day === input.day
       );
     }
+    
+    console.log(`Returning ${filteredNominations.length} nominations after filtering`);
     
     return {
       nominations: filteredNominations,

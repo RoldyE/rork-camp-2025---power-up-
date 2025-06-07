@@ -10,17 +10,25 @@ const zeroPointTeams = initialTeams.map(team => ({
   points: 0,
 }));
 
-// In-memory database for teams and point history
-// This needs to be exported so other routes can access the same reference
-export let teams: Team[] = [...zeroPointTeams];
+// In-memory database for teams and point history - make it global for persistence
+let globalTeams = global.teams || [...zeroPointTeams];
+global.teams = globalTeams;
 
-// Separate storage for point history
-export let pointHistory: Record<string, PointEntry[]> = {};
+// Export the global reference
+export let teams = globalTeams;
 
-// Initialize point history for each team
-initialTeams.forEach(team => {
-  pointHistory[team.id] = [];
-});
+// Separate storage for point history - also make it global
+let globalPointHistory = global.pointHistory || {};
+global.pointHistory = globalPointHistory;
+
+export let pointHistory = globalPointHistory;
+
+// Initialize point history for each team if not already done
+if (Object.keys(pointHistory).length === 0) {
+  initialTeams.forEach(team => {
+    pointHistory[team.id] = [];
+  });
+}
 
 export default publicProcedure
   .input(
@@ -60,6 +68,8 @@ export default publicProcedure
     }
     
     pointHistory[teamId].push(pointEntry);
+    
+    console.log(`Updated points for team ${teamId}. New total: ${teams[teamIndex].points}`);
     
     return {
       success: true,

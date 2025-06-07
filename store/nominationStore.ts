@@ -35,7 +35,7 @@ interface NominationState {
 export const useNominationStore = create<NominationState>()(
   persist(
     (set, get) => ({
-      nominations: initialNominations,
+      nominations: [],
       userVotes: [],
       isLoading: false,
       lastUpdated: null,
@@ -158,27 +158,15 @@ export const useNominationStore = create<NominationState>()(
                 ],
                 isLoading: false
               }));
+              
+              // Fetch all nominations of this type to ensure consistency
+              await get().fetchNominations(nomination.type);
             } else {
               set({ isLoading: false });
             }
           } catch (serverError) {
             console.error("Server error adding nomination:", serverError);
-            
-            // Fallback to local update if server fails
-            const newId = Date.now().toString();
-            const newNomination = {
-              ...nomination,
-              id: newId,
-              votes: 0,
-            };
-            
-            set((state) => ({
-              nominations: [
-                ...state.nominations,
-                newNomination,
-              ],
-              isLoading: false
-            }));
+            set({ isLoading: false });
           }
         } catch (error) {
           console.error("Error adding nomination:", error);
@@ -199,29 +187,13 @@ export const useNominationStore = create<NominationState>()(
               day,
             });
             
-            // Update local state after server update
-            set((state) => {
-              // Update nomination votes
-              const updatedNominations = state.nominations.map((nom) =>
-                nom.id === nominationId
-                  ? { ...nom, votes: nom.votes + 1 }
-                  : nom
-              );
-              
-              // Record the user vote locally
-              const newVote = {
-                userId,
-                nominationType,
-                day,
-                timestamp: new Date().toISOString(),
-              };
-              
-              return {
-                nominations: updatedNominations,
-                userVotes: [...state.userVotes, newVote],
-                isLoading: false
-              };
-            });
+            // Fetch updated nominations from server to ensure consistency
+            await get().fetchNominations(nominationType, day);
+            
+            // Fetch updated user votes
+            await get().fetchUserVotes(userId, nominationType);
+            
+            set({ isLoading: false });
           } catch (serverError) {
             console.error("Server error voting for nomination:", serverError);
             set({ isLoading: false });
@@ -249,12 +221,11 @@ export const useNominationStore = create<NominationState>()(
               type,
             });
             
-            // Update local state after server update
+            // Fetch updated nominations from server
+            await get().fetchNominations(type, day);
+            
+            // Clear local user votes for this type and day
             set((state) => ({
-              nominations: state.nominations.map((nom) =>
-                nom.day === day && nom.type === type ? { ...nom, votes: 0 } : nom
-              ),
-              // Also filter out user votes for this day and type
               userVotes: state.userVotes.filter(
                 vote => !(vote.day === day && vote.nominationType === type)
               ),
@@ -348,8 +319,7 @@ export const useNominationStore = create<NominationState>()(
       name: "nomination-storage",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        // Persist both nominations and user votes
-        nominations: state.nominations,
+        // Only persist user votes locally - nominations come from server
         userVotes: state.userVotes,
         lastUpdated: state.lastUpdated
       }),

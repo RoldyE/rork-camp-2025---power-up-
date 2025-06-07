@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { nominations } from "../addNomination/route";
+import { nominations, nominationsByTypeAndDay } from "../addNomination/route";
 import { userVotes } from "../voteForNomination/route";
 import { NominationType } from "@/types";
 
@@ -24,14 +24,25 @@ export default publicProcedure
       }
     });
     
+    // Also reset votes in the type-day map
+    const key = `${type}-${day}`;
+    if (nominationsByTypeAndDay[key]) {
+      nominationsByTypeAndDay[key] = nominationsByTypeAndDay[key].map(nom => ({
+        ...nom,
+        votes: 0
+      }));
+    }
+    
     // Remove user votes for the specified day and type
-    const userVotesIndex = userVotes.findIndex(
-      vote => vote.day === day && vote.nominationType === type
+    const newUserVotes = userVotes.filter(
+      vote => !(vote.day === day && vote.nominationType === type)
     );
     
-    if (userVotesIndex !== -1) {
-      userVotes.splice(userVotesIndex, 1);
-    }
+    // Clear the array and push new items to maintain the reference
+    userVotes.length = 0;
+    newUserVotes.forEach(vote => userVotes.push(vote));
+    
+    console.log(`Reset votes for ${type} nominations on ${day}`);
     
     return {
       success: true,
