@@ -82,9 +82,9 @@ export const NominationCard = ({ nomination, onDelete, onVote, disabled = false 
       <View style={styles.header}>
         <View style={styles.camperInfo}>
           <View style={styles.imageContainer}>
-            {camper.image ? (
+            {camper.imageUrl ? (
               <Image 
-                source={{ uri: camper.image }} 
+                source={{ uri: camper.imageUrl }} 
                 style={styles.image} 
                 contentFit="cover"
               />
