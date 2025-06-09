@@ -1,4 +1,4 @@
-import { publicProcedure, router } from "./create-context";
+import { router } from "./create-context";
 import hiProcedure from "./routes/example/hi/route";
 import getTeams from "./routes/teams/getTeams/route";
 import updatePoints from "./routes/teams/updatePoints/route";

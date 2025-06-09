@@ -13,8 +13,8 @@ import { useAuthStore } from "@/store/authStore";
 type NominationCardProps = {
   nomination: Nomination;
   onDelete?: () => void;
-  onVote?: () => void; // Add onVote prop
-  disabled?: boolean; // Add disabled prop
+  onVote?: () => void;
+  disabled?: boolean;
 };
 
 export const NominationCard = ({ nomination, onDelete, onVote, disabled = false }: NominationCardProps) => {

@@ -16,27 +16,28 @@ export default publicProcedure
     
     let filteredVotes: UserVote[] = [];
     
-    if (nominationType && day) {
-      // Filter by user ID, nomination type, and day
+    // Filter votes based on input parameters
+    if (userId && nominationType && day) {
+      // Filter by all three parameters
       filteredVotes = userVotes.filter((vote: UserVote) => 
         vote.userId === userId && 
         vote.nominationType === nominationType && 
         vote.day === day
       );
-    } else if (nominationType) {
-      // Filter by user ID and nomination type
+    } else if (userId && nominationType) {
+      // Filter by userId and nominationType
       filteredVotes = userVotes.filter((vote: UserVote) => 
         vote.userId === userId && 
         vote.nominationType === nominationType
       );
-    } else if (day) {
-      // Filter by user ID and day
+    } else if (userId && day) {
+      // Filter by userId and day
       filteredVotes = userVotes.filter((vote: UserVote) => 
         vote.userId === userId && 
         vote.day === day
       );
-    } else {
-      // Filter by user ID only
+    } else if (userId) {
+      // Filter by userId only
       filteredVotes = userVotes.filter((vote: UserVote) => vote.userId === userId);
     }
     

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { useRouter } from "expo-router";
 import { useTeamStore } from "@/store/teamStore";
 import { TeamScoreCard } from "@/components/TeamScoreCard";
+import { TeamPodium } from "@/components/TeamPodium";
 import { colors } from "@/constants/colors";
 import { usePolling } from "@/hooks/usePolling";
 import { RefreshCw } from "lucide-react-native";
@@ -61,6 +62,11 @@ export default function TeamsScreen() {
       
       {!isLoading && teams.length > 0 && (
         <>
+          {/* Podium View */}
+          <TeamPodium />
+          
+          <View style={styles.divider} />
+          
           {/* List View */}
           <Text style={styles.sectionTitle}>All Teams</Text>
           {sortedTeams.map((team, index) => (

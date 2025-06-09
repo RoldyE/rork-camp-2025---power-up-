@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { nominations as initialNominations } from "@/mocks/nominations";
-import { NominationType, Nomination } from "@/types";
+import { Nomination, NominationType } from "@/types";
 
 // Define types for global storage
 interface GlobalStorage {
@@ -10,41 +10,33 @@ interface GlobalStorage {
 }
 
 // Get the global object
-const globalObj = global as any;
+const globalObj = global as unknown as GlobalStorage;
 
-// In-memory database for nominations
-// Using a more persistent approach with a global variable
-// This will be shared across all imports of this module
+// In-memory database for nominations - make it global for persistence
 if (!globalObj.nominations) {
   globalObj.nominations = [...initialNominations];
 }
 
-// Export this so other routes can access the same reference
+// Export the global reference
 export let nominations = globalObj.nominations;
 
-// Map to track nominations by type and day for faster lookups
-// Also make this global to persist between server restarts
+// Create a map to store nominations by type and day for faster lookups
 if (!globalObj.nominationsByTypeAndDay) {
   globalObj.nominationsByTypeAndDay = {};
 }
 
-export const nominationsByTypeAndDay = globalObj.nominationsByTypeAndDay;
+export let nominationsByTypeAndDay = globalObj.nominationsByTypeAndDay;
 
 // Initialize the map if it's empty
-function initializeNominationMap() {
-  if (Object.keys(nominationsByTypeAndDay).length === 0) {
-    nominations.forEach((nom: Nomination) => {
-      const key = `${nom.type}-${nom.day}`;
-      if (!nominationsByTypeAndDay[key]) {
-        nominationsByTypeAndDay[key] = [];
-      }
-      nominationsByTypeAndDay[key].push(nom);
-    });
-  }
+if (Object.keys(nominationsByTypeAndDay).length === 0) {
+  initialNominations.forEach((nom: Nomination) => {
+    const key = `${nom.type}-${nom.day}`;
+    if (!nominationsByTypeAndDay[key]) {
+      nominationsByTypeAndDay[key] = [];
+    }
+    nominationsByTypeAndDay[key].push(nom);
+  });
 }
-
-// Call initialization
-initializeNominationMap();
 
 export default publicProcedure
   .input(
@@ -52,34 +44,34 @@ export default publicProcedure
       camperId: z.string(),
       reason: z.string(),
       day: z.string(),
-      type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"])
+      type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]),
     })
   )
   .mutation(({ input }) => {
     const { camperId, reason, day, type } = input;
     
-    // Create a new nomination with the correct type
+    // Create a new nomination
     const newNomination: Nomination = {
       id: Date.now().toString(),
       camperId,
       reason,
       day,
-      type: type as NominationType,
+      type,
       votes: 0,
+      timestamp: new Date().toISOString(),
     };
     
-    // Add the nomination to the database
+    // Add to the main nominations array
     nominations.push(newNomination);
     
-    // Update the map
+    // Add to the type-day map
     const key = `${type}-${day}`;
     if (!nominationsByTypeAndDay[key]) {
       nominationsByTypeAndDay[key] = [];
     }
     nominationsByTypeAndDay[key].push(newNomination);
     
-    // Log for debugging
-    console.log(`Added nomination: ${type} for day ${day}. Total nominations: ${nominations.length}`);
+    console.log(`Added new nomination for camper ${camperId} of type ${type} for day ${day}`);
     
     return {
       success: true,

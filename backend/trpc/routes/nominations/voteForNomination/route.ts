@@ -9,7 +9,7 @@ interface GlobalStorage {
 }
 
 // Get the global object
-const globalObj = global as any;
+const globalObj = global as unknown as GlobalStorage;
 
 // In-memory database for user votes - make it global for persistence
 if (!globalObj.userVotes) {

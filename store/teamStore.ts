@@ -50,11 +50,11 @@ export const useTeamStore = create<TeamState>()(
                 points: serverTeam.points || 0,
                 // Get point history from server if available
                 pointHistory: result.pointHistory?.[serverTeam.id] || localTeam?.pointHistory || []
-              } as Team;
+              };
             });
             
             set({ 
-              teams: updatedTeams,
+              teams: updatedTeams as Team[],
               lastUpdated: new Date(result.timestamp),
               isLoading: false
             });

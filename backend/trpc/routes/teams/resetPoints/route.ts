@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { teams, pointHistory } from "../updatePoints/route";
+import { teams, pointHistory } from "./updatePoints/route";
 import { Team } from "@/types";
 
 export default publicProcedure
@@ -32,12 +32,6 @@ export default publicProcedure
       }
       
       console.log(`Reset points for team ${teamId}`);
-      
-      return {
-        success: true,
-        team: teams[teamIndex],
-        timestamp: new Date(),
-      };
     } else {
       // Reset points for all teams
       teams.forEach((team: Team, index: number) => {
@@ -45,19 +39,19 @@ export default publicProcedure
           ...team,
           points: 0
         };
-        
-        // Clear the team's point history
-        if (pointHistory[team.id]) {
-          pointHistory[team.id] = [];
-        }
+      });
+      
+      // Clear all point history
+      Object.keys(pointHistory).forEach(teamId => {
+        pointHistory[teamId] = [];
       });
       
       console.log("Reset points for all teams");
-      
-      return {
-        success: true,
-        teams,
-        timestamp: new Date(),
-      };
     }
+    
+    return {
+      success: true,
+      teams,
+      timestamp: new Date(),
+    };
   });

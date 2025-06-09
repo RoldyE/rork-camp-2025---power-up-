@@ -10,7 +10,7 @@ interface GlobalStorage {
 }
 
 // Get the global object
-const globalObj = global as any;
+const globalObj = global as unknown as GlobalStorage;
 
 // Initialize teams with zero points instead of default values
 // This ensures all clients start with the same base state

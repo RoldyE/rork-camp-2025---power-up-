@@ -5,7 +5,7 @@ import { colors } from "@/constants/colors";
 
 type TeamScoreCardProps = {
   team: Team;
-  position?: number; // Changed from rank to position
+  position?: number;
   onPress?: () => void;
 };
 

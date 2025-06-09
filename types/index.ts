@@ -1,10 +1,19 @@
-// Team types
+export type NominationType = "daily" | "sportsmanship" | "bravery" | "service" | "scholar" | "other";
+
+export interface Camper {
+  id: string;
+  name: string;
+  age: number;
+  teamId: string;
+  imageUrl?: string;
+}
+
 export interface Team {
   id: string;
   name: string;
   color: string;
   points: number;
-  pointHistory?: PointEntry[];
+  pointHistory: PointEntry[];
 }
 
 export interface PointEntry {
@@ -14,17 +23,23 @@ export interface PointEntry {
   date: string;
 }
 
-// Camper types
-export interface Camper {
+export interface Nomination {
   id: string;
-  name: string;
-  age: number;
-  teamId: string;
-  cabin: string;
-  imageUrl?: string;
+  camperId: string;
+  reason: string;
+  day: string;
+  type: NominationType;
+  votes: number;
+  timestamp: string;
 }
 
-// Game types
+export interface UserVote {
+  userId: string;
+  nominationType: NominationType;
+  day: string;
+  timestamp: string;
+}
+
 export interface Game {
   id: string;
   title: string;
@@ -33,14 +48,13 @@ export interface Game {
   date: string;
   time: string;
   teamIds: string[];
-  status: GameStatus;
-  winner?: string;
   imageUrl?: string;
+  rules?: string[];
+  equipment?: string[];
+  winner?: string;
+  scores?: Record<string, number>;
 }
 
-export type GameStatus = "upcoming" | "in-progress" | "completed" | "cancelled";
-
-// Schedule types
 export interface ScheduleItem {
   id: string;
   title: string;
@@ -49,63 +63,24 @@ export interface ScheduleItem {
   endTime: string;
   location: string;
   day: string;
-  type: ScheduleItemType;
+  type: "activity" | "meal" | "game" | "ceremony" | "other";
 }
 
-export type ScheduleItemType = "activity" | "meal" | "game" | "event" | "free-time";
-
-// Nomination types
-export interface Nomination {
-  id: string;
-  camperId: string;
-  reason: string;
-  day: string;
-  type: NominationType;
-  votes: number;
-}
-
-export type NominationType = "daily" | "sportsmanship" | "bravery" | "service" | "scholar" | "other";
-
-// User types
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  teamId?: string;
-  imageUrl?: string;
-}
-
-export type UserRole = "camper" | "counselor" | "admin";
-
-// Resource types
 export interface Resource {
   id: string;
   title: string;
   description: string;
   url: string;
-  category: ResourceCategory;
-  icon: string;
+  category: "forms" | "guides" | "maps" | "contacts" | "emergency" | "other";
+  icon?: string;
 }
 
-export type ResourceCategory = "forms" | "guides" | "schedules" | "contacts" | "emergency" | "other";
-
-// Notification types
 export interface Notification {
   id: string;
   title: string;
   message: string;
-  date: string;
-  read: boolean;
-  type: NotificationType;
-}
-
-export type NotificationType = "announcement" | "schedule-change" | "game-result" | "nomination" | "emergency" | "other";
-
-// Voting types
-export interface UserVote {
-  userId: string;
-  nominationType: NominationType;
-  day: string;
   timestamp: string;
+  read: boolean;
+  type: "announcement" | "alert" | "reminder" | "other";
+  link?: string;
 }

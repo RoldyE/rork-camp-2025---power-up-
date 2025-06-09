@@ -1,14 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
-export interface PollingOptions {
+interface PollingOptions {
   enabled?: boolean;
   interval?: number;
   onSuccess?: (data: any) => void;
   onError?: (error: any) => void;
 }
 
+/**
+ * Custom hook for polling a function at regular intervals
+ * @param fn Function to poll
+ * @param options Polling options
+ */
 export function usePolling(
-  callback: () => Promise<any> | void,
+  fn: () => Promise<any> | void,
   options: PollingOptions = {}
 ) {
   const {
@@ -19,55 +24,44 @@ export function usePolling(
   } = options;
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const callbackRef = useRef(callback);
+  const isMountedRef = useRef(true);
 
-  // Update the callback ref when the callback changes
   useEffect(() => {
-    callbackRef.current = callback;
-  }, [callback]);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
-  // Setup polling
   useEffect(() => {
-    // Skip if polling is disabled
-    if (!enabled) return;
+    const poll = async () => {
+      if (!enabled || !isMountedRef.current) return;
 
-    // Function to execute the callback and schedule the next poll
-    const executePoll = async () => {
       try {
-        const result = await callbackRef.current();
-        if (onSuccess) onSuccess(result);
-      } catch (error) {
-        if (onError) onError(error);
-      } finally {
-        // Schedule next poll if component is still mounted and polling is enabled
-        if (enabled) {
-          timeoutRef.current = setTimeout(executePoll, interval);
+        const result = await fn();
+        if (onSuccess && isMountedRef.current) {
+          onSuccess(result);
         }
+      } catch (error) {
+        if (onError && isMountedRef.current) {
+          onError(error);
+        }
+      }
+
+      // Schedule next poll if component is still mounted
+      if (isMountedRef.current) {
+        timeoutRef.current = setTimeout(poll, interval);
       }
     };
 
     // Start polling
-    executePoll();
+    poll();
 
-    // Cleanup function
+    // Cleanup on unmount or when dependencies change
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [enabled, interval, onSuccess, onError]);
-
-  // Return a function to manually trigger the callback
-  return {
-    trigger: async () => {
-      try {
-        const result = await callbackRef.current();
-        if (onSuccess) onSuccess(result);
-        return result;
-      } catch (error) {
-        if (onError) onError(error);
-        throw error;
-      }
-    },
-  };
+  }, [fn, enabled, interval, onSuccess, onError]);
 }

@@ -8,50 +8,31 @@ export default publicProcedure
     z.object({
       type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]).optional(),
       day: z.string().optional(),
-    }).optional()
+    })
   )
   .query(({ input }) => {
-    if (!input) {
-      // Return all nominations
-      return {
-        success: true,
-        nominations,
-        timestamp: new Date(),
-      };
-    }
-    
     const { type, day } = input;
     
+    let filteredNominations: Nomination[] = [];
+    
     if (type && day) {
-      // Return nominations of the specified type and day
+      // Use the type-day map for faster lookups
       const key = `${type}-${day}`;
-      return {
-        success: true,
-        nominations: nominationsByTypeAndDay[key] || [],
-        timestamp: new Date(),
-      };
+      filteredNominations = nominationsByTypeAndDay[key] || [];
     } else if (type) {
-      // Return nominations of the specified type
-      const filteredNominations = nominations.filter((nom: Nomination) => nom.type === type);
-      return {
-        success: true,
-        nominations: filteredNominations,
-        timestamp: new Date(),
-      };
+      // Filter by type only
+      filteredNominations = nominations.filter(nom => nom.type === type);
     } else if (day) {
-      // Return nominations of the specified day
-      const filteredNominations = nominations.filter((nom: Nomination) => nom.day === day);
-      return {
-        success: true,
-        nominations: filteredNominations,
-        timestamp: new Date(),
-      };
+      // Filter by day only
+      filteredNominations = nominations.filter(nom => nom.day === day);
+    } else {
+      // Return all nominations
+      filteredNominations = [...nominations];
     }
     
-    // Return all nominations if no filters are specified
     return {
       success: true,
-      nominations,
+      nominations: filteredNominations,
       timestamp: new Date(),
     };
   });
