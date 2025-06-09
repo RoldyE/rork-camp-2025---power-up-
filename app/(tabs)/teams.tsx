@@ -57,6 +57,12 @@ export default function TeamsScreen() {
         renderItem={({ item }) => <SimpleTeamCard team={item} />}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No teams found</Text>
+            <Text style={styles.emptySubtext}>Team data could not be loaded. Please try again later.</Text>
+          </View>
+        }
       />
     </SafeAreaView>
   );
@@ -81,5 +87,21 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 100,
     padding: 16,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: colors.textLight,
+    textAlign: "center",
   },
 });
