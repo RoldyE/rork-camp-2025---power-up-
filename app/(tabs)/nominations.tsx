@@ -5,11 +5,10 @@ import { Header } from "@/components/Header";
 import { NominationCard } from "@/components/NominationCard";
 import { useNominationStore } from "@/store/nominationStore";
 import { colors } from "@/constants/colors";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { Plus, Award, RotateCcw } from "lucide-react-native";
 import { NominationTypeSelector } from "@/components/NominationTypeSelector";
 import { NominationType } from "@/types";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/authStore";
 import { usePolling } from "@/hooks/usePolling";
 
@@ -129,7 +128,7 @@ export default function NominationsScreen() {
   };
   
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <View style={styles.container}>
       <Header 
         title="Nominations" 
         subtitle="Vote for outstanding campers"
@@ -202,7 +201,7 @@ export default function NominationsScreen() {
           </Pressable>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

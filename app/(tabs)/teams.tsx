@@ -2,7 +2,6 @@ import React, { useEffect, useCallback } from "react";
 import { View, StyleSheet, FlatList, Text, ActivityIndicator, AppState } from "react-native";
 import { Header } from "@/components/Header";
 import { colors } from "@/constants/colors";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useTeamStore } from "@/store/teamStore";
 import { SimpleTeamCard } from "@/components/SimpleTeamCard";
 import { usePolling } from "@/hooks/usePolling";
@@ -39,7 +38,7 @@ export default function TeamsScreen() {
   const sortedTeams = [...teams].sort((a, b) => b.points - a.points);
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <View style={styles.container}>
       <Header 
         title="Team Standings" 
         subtitle="Current points for each team"
@@ -64,7 +63,7 @@ export default function TeamsScreen() {
           </View>
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
