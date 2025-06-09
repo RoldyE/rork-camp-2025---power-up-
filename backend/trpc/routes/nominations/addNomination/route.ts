@@ -1,17 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { nominations as initialNominations } from "@/mocks/nominations";
+import { supabase } from "@/lib/supabase";
 import { NominationType, Nomination } from "@/types";
-
-// In-memory database for nominations
-// Export this so other routes can access the same reference
-export let nominations: Nomination[] = [...initialNominations];
-
-// Create a map to track nominations by ID for faster lookups
-const nominationsMap = new Map<string, Nomination>();
-initialNominations.forEach(nom => {
-  nominationsMap.set(nom.id, nom);
-});
 
 export default publicProcedure
   .input(
@@ -22,29 +12,46 @@ export default publicProcedure
       type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"])
     })
   )
-  .mutation(({ input }) => {
+  .mutation(async ({ input }) => {
     try {
       const { camperId, reason, day, type } = input;
       
-      // Create a new nomination with the correct type
-      const newNomination: Nomination = {
-        id: Date.now().toString(),
-        camperId,
-        reason,
-        day,
-        type: type as NominationType,
-        votes: 0,
-      };
+      // Add nomination to Supabase
+      const { data, error } = await supabase
+        .from('nominations')
+        .insert([{
+          camper_id: camperId,
+          reason: reason,
+          day: day,
+          category: type,
+          votes: 0
+        }])
+        .select()
+        .single();
       
-      // Add the nomination to both the array and the map
-      nominations.push(newNomination);
-      nominationsMap.set(newNomination.id, newNomination);
+      if (error) {
+        console.error("Error adding nomination to Supabase:", error);
+        throw new Error("Failed to add nomination to Supabase");
+      }
       
-      return {
-        success: true,
-        nomination: newNomination,
-        timestamp: new Date(),
-      };
+      if (data) {
+        const newNomination: Nomination = {
+          id: data.nomination_id,
+          camperId: data.camper_id,
+          reason: data.reason || "",
+          day: data.day,
+          type: data.category as NominationType,
+          votes: data.votes || 0,
+        };
+        
+        return {
+          success: true,
+          nomination: newNomination,
+          timestamp: new Date(),
+        };
+      } else {
+        throw new Error("No data returned from Supabase after adding nomination");
+      }
     } catch (error) {
       console.error("Error in addNomination procedure:", error);
       throw new Error("Failed to add nomination");

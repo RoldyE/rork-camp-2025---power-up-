@@ -1,25 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { teams as initialTeams } from "@/mocks/teams";
-import { PointEntry, Team } from "@/types";
-
-// In-memory database for teams and point history
-// This needs to be exported so other routes can access the same reference
-export let teams: Team[] = [...initialTeams];
-
-// Initialize teams with zero points to avoid default values
-teams = teams.map(team => ({
-  ...team,
-  points: 0
-}));
-
-// Separate storage for point history
-export let pointHistory: Record<string, PointEntry[]> = {};
-
-// Initialize point history for each team
-initialTeams.forEach(team => {
-  pointHistory[team.id] = [];
-});
+import { supabase } from "@/lib/supabase";
+import { Team, PointEntry } from "@/types";
 
 export default publicProcedure
   .input(
@@ -29,42 +11,63 @@ export default publicProcedure
       reason: z.string(),
     })
   )
-  .mutation(({ input }) => {
+  .mutation(async ({ input }) => {
     try {
       const { teamId, points, reason } = input;
       
-      // Find the team and update its points
-      const teamIndex = teams.findIndex(team => team.id === teamId);
+      // Add points to Supabase
+      const { data, error } = await supabase
+        .from('points')
+        .insert([{ team_id: teamId, points, reason, updated_at: new Date().toISOString() }])
+        .select();
       
-      if (teamIndex === -1) {
-        throw new Error(`Team with ID ${teamId} not found`);
+      if (error) {
+        console.error("Error updating points in Supabase:", error);
+        throw new Error("Failed to update points in Supabase");
       }
       
-      // Create a new point history entry
-      const pointEntry: PointEntry = {
-        id: Date.now().toString(),
-        points,
-        reason,
-        date: new Date().toISOString()
-      };
+      // Fetch updated team data
+      const { data: teamData, error: teamError } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('id', teamId)
+        .single();
       
-      // Update the team points
-      teams[teamIndex] = {
-        ...teams[teamIndex],
-        points: teams[teamIndex].points + points
-      };
-      
-      // Add to point history
-      if (!pointHistory[teamId]) {
-        pointHistory[teamId] = [];
+      if (teamError) {
+        console.error("Error fetching team data from Supabase:", teamError);
+        throw new Error("Failed to fetch team data");
       }
       
-      pointHistory[teamId].push(pointEntry);
+      // Fetch updated point history
+      const { data: pointsData, error: pointsError } = await supabase
+        .from('points')
+        .select('points, reason, updated_at')
+        .eq('team_id', teamId);
+      
+      if (pointsError) {
+        console.error("Error fetching point history from Supabase:", pointsError);
+        throw new Error("Failed to fetch point history");
+      }
+      
+      const pointHistory = pointsData?.map(entry => ({
+        id: entry.updated_at,
+        points: entry.points,
+        reason: entry.reason || "No reason provided",
+        date: entry.updated_at
+      })) || [];
+      
+      const totalPoints = pointsData?.reduce((sum, entry) => sum + entry.points, 0) || 0;
+      
+      const updatedTeam = {
+        ...teamData,
+        points: totalPoints,
+        pointHistory
+      };
       
       return {
         success: true,
-        team: teams[teamIndex],
-        pointHistory: pointHistory[teamId],
+        team: updatedTeam,
+        pointHistory,
         timestamp: new Date(),
       };
     } catch (error) {

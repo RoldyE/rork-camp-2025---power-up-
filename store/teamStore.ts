@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Team, PointEntry } from "@/types";
 import { teams as initialTeams } from "@/mocks/teams";
-import { trpcClient } from "@/lib/trpc";
+import { supabase } from "@/lib/supabase";
 
 interface TeamState {
   teams: Team[];
@@ -34,54 +34,47 @@ export const useTeamStore = create<TeamState>()(
         try {
           set({ isLoading: true });
           
-          try {
-            const result = await trpcClient.teams.getTeams.query();
+          // Fetch teams from Supabase
+          const { data, error } = await supabase
+            .from('teams')
+            .select('*');
+          
+          if (error) {
+            console.error("Error fetching teams from Supabase:", error);
+            set({ isLoading: false });
+            return;
+          }
+          
+          if (data) {
+            // Fetch points for each team
+            const teamsWithPoints = await Promise.all(data.map(async (team) => {
+              const { data: pointsData, error: pointsError } = await supabase
+                .from('points')
+                .select('points, reason, updated_at')
+                .eq('team_id', team.id);
+              
+              if (pointsError) {
+                console.error(`Error fetching points for team ${team.id}:`, pointsError);
+                return { ...team, points: 0, pointHistory: [] };
+              }
+              
+              const totalPoints = pointsData?.reduce((sum, entry) => sum + entry.points, 0) || 0;
+              const pointHistory = pointsData?.map(entry => ({
+                id: entry.updated_at,
+                points: entry.points,
+                reason: entry.reason || "No reason provided",
+                date: entry.updated_at
+              })) || [];
+              
+              return { ...team, points: totalPoints, pointHistory };
+            }));
             
-            if (!result || !result.teams) {
-              console.error("Invalid response from server:", result);
-              set({ isLoading: false });
-              return;
-            }
-            
-            // Always merge server data with local data to prevent data loss
-            set((state) => {
-              // Create a map of existing teams for quick lookup
-              const existingTeamsMap = new Map(
-                state.teams.map(team => [team.id, team])
-              );
-              
-              // Add or update teams from the result
-              result.teams.forEach(team => {
-                const existingTeam = existingTeamsMap.get(team.id);
-                
-                // If the team exists locally and has a higher point count, keep the local data
-                // This prevents points from being lost during sync
-                if (existingTeam && existingTeam.points > team.points) {
-                  existingTeamsMap.set(team.id, {
-                    ...team,
-                    points: existingTeam.points,
-                    pointHistory: existingTeam.pointHistory || []
-                  });
-                } else {
-                  existingTeamsMap.set(team.id, {
-                    ...team,
-                    pointHistory: team.pointHistory || []
-                  });
-                }
-              });
-              
-              // Convert map back to array
-              const updatedTeams = Array.from(existingTeamsMap.values());
-              
-              return { 
-                teams: updatedTeams,
-                lastUpdated: new Date(result.timestamp || Date.now()),
-                isLoading: false
-              };
+            set({
+              teams: teamsWithPoints,
+              lastUpdated: new Date(),
+              isLoading: false
             });
-          } catch (error) {
-            console.error("Error in TRPC call:", error);
-            // Don't update state on error, just set loading to false
+          } else {
             set({ isLoading: false });
           }
         } catch (error) {
@@ -94,7 +87,18 @@ export const useTeamStore = create<TeamState>()(
         try {
           set({ isLoading: true });
           
-          // First update locally for immediate feedback
+          // Add points to Supabase
+          const { data, error } = await supabase
+            .from('points')
+            .insert([{ team_id: teamId, points, reason, updated_at: new Date().toISOString() }]);
+          
+          if (error) {
+            console.error("Error adding points to Supabase:", error);
+            set({ isLoading: false });
+            return;
+          }
+          
+          // Update local state
           set((state) => {
             const updatedTeams = state.teams.map((team) =>
               team.id === teamId
@@ -120,41 +124,7 @@ export const useTeamStore = create<TeamState>()(
             };
           });
           
-          // Then update on the server
-          try {
-            const result = await trpcClient.teams.updatePoints.mutate({
-              teamId,
-              points,
-              reason
-            });
-            
-            // Only update if server response is valid
-            if (result && result.team) {
-              set((state) => {
-                const updatedTeams = state.teams.map((team) =>
-                  team.id === teamId
-                    ? { 
-                        ...team,
-                        points: Math.max(team.points, result.team.points), // Keep the higher point count
-                        pointHistory: result.pointHistory || team.pointHistory
-                      }
-                    : team
-                );
-                
-                return {
-                  teams: updatedTeams,
-                  isLoading: false,
-                  lastUpdated: new Date(),
-                };
-              });
-            } else {
-              set({ isLoading: false });
-            }
-          } catch (serverError) {
-            console.error("Server error adding points:", serverError);
-            // Keep local changes even if server fails
-            set({ isLoading: false });
-          }
+          set({ isLoading: false });
         } catch (error) {
           console.error("Error adding points:", error);
           set({ isLoading: false });
@@ -165,7 +135,19 @@ export const useTeamStore = create<TeamState>()(
         try {
           set({ isLoading: true });
           
-          // First update locally for immediate feedback
+          // Delete all points from Supabase
+          const { error } = await supabase
+            .from('points')
+            .delete()
+            .neq('team_id', ''); // This ensures all records are deleted
+          
+          if (error) {
+            console.error("Error resetting points in Supabase:", error);
+            set({ isLoading: false });
+            return;
+          }
+          
+          // Update local state
           set((state) => {
             const resetTeams = state.teams.map((team) => ({ 
               ...team, 
@@ -179,14 +161,6 @@ export const useTeamStore = create<TeamState>()(
             };
           });
           
-          // Then update on the server
-          try {
-            await trpcClient.teams.resetPoints.mutate({});
-          } catch (serverError) {
-            console.error("Server error resetting points:", serverError);
-            // Keep local changes even if server fails
-          }
-          
           set({ isLoading: false });
         } catch (error) {
           console.error("Error resetting points:", error);
@@ -198,7 +172,19 @@ export const useTeamStore = create<TeamState>()(
         try {
           set({ isLoading: true });
           
-          // First update locally for immediate feedback
+          // Delete points for specific team from Supabase
+          const { error } = await supabase
+            .from('points')
+            .delete()
+            .eq('team_id', teamId);
+          
+          if (error) {
+            console.error("Error resetting team points in Supabase:", error);
+            set({ isLoading: false });
+            return;
+          }
+          
+          // Update local state
           set((state) => {
             const updatedTeams = state.teams.map((team) => 
               team.id === teamId 
@@ -211,14 +197,6 @@ export const useTeamStore = create<TeamState>()(
               lastUpdated: new Date(),
             };
           });
-          
-          // Then update on the server
-          try {
-            await trpcClient.teams.resetPoints.mutate({ teamId });
-          } catch (serverError) {
-            console.error("Server error resetting team points:", serverError);
-            // Keep local changes even if server fails
-          }
           
           set({ isLoading: false });
         } catch (error) {

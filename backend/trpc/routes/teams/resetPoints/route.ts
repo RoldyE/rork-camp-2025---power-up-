@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { teams } from "../updatePoints/route";
-import { pointHistory } from "../updatePoints/route";
+import { supabase } from "@/lib/supabase";
 
 export default publicProcedure
   .input(
@@ -9,55 +8,79 @@ export default publicProcedure
       teamId: z.string().optional(),
     })
   )
-  .mutation(({ input }) => {
+  .mutation(async ({ input }) => {
     const { teamId } = input;
     
-    if (teamId) {
-      // Reset points for a specific team
-      const teamIndex = teams.findIndex(team => team.id === teamId);
-      
-      if (teamIndex === -1) {
-        throw new Error(`Team with ID ${teamId} not found`);
-      }
-      
-      teams[teamIndex] = {
-        ...teams[teamIndex],
-        points: 0
-      };
-      
-      // Clear point history for this team
-      pointHistory[teamId] = [];
-      
-      return {
-        success: true,
-        team: {
-          ...teams[teamIndex],
-          pointHistory: []
-        },
-        timestamp: new Date(),
-      };
-    } else {
-      // Reset points for all teams
-      teams.forEach((team, index) => {
-        teams[index] = {
-          ...team,
-          points: 0
-        };
+    try {
+      if (teamId) {
+        // Reset points for a specific team in Supabase
+        const { error } = await supabase
+          .from('points')
+          .delete()
+          .eq('team_id', teamId);
         
-        // Clear point history for all teams
-        pointHistory[team.id] = [];
-      });
-      
-      // Combine teams with their (now empty) point history
-      const teamsWithHistory = teams.map(team => ({
-        ...team,
-        pointHistory: []
-      }));
-      
-      return {
-        success: true,
-        teams: teamsWithHistory,
-        timestamp: new Date(),
-      };
+        if (error) {
+          console.error("Error resetting team points in Supabase:", error);
+          throw new Error("Failed to reset team points in Supabase");
+        }
+        
+        // Fetch updated team data
+        const { data: teamData, error: teamError } = await supabase
+          .from('teams')
+          .select('*')
+          .eq('id', teamId)
+          .single();
+        
+        if (teamError) {
+          console.error("Error fetching team data from Supabase:", teamError);
+          throw new Error("Failed to fetch team data");
+        }
+        
+        return {
+          success: true,
+          team: {
+            ...teamData,
+            points: 0,
+            pointHistory: []
+          },
+          timestamp: new Date(),
+        };
+      } else {
+        // Reset points for all teams in Supabase
+        const { error } = await supabase
+          .from('points')
+          .delete()
+          .neq('team_id', '');
+        
+        if (error) {
+          console.error("Error resetting all points in Supabase:", error);
+          throw new Error("Failed to reset all points in Supabase");
+        }
+        
+        // Fetch all teams
+        const { data: teamsData, error: teamsError } = await supabase
+          .from('teams')
+          .select('*');
+        
+        if (teamsError) {
+          console.error("Error fetching teams from Supabase:", teamsError);
+          throw new Error("Failed to fetch teams");
+        }
+        
+        const teamsWithZeroPoints = teamsData.map(team => ({
+          ...team,
+          points: 0,
+          pointHistory: []
+        }));
+        
+        return {
+          success: true,
+          teams: teamsWithZeroPoints,
+          timestamp: new Date(),
+        };
+      }
+    } catch (error) {
+      console.error("Error in resetPoints procedure:", error);
+      throw new Error("Failed to reset points");
     }
   });

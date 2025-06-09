@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Nomination, NominationType } from "@/types";
 import { nominations as initialNominations } from "@/mocks/nominations";
-import { trpcClient } from "@/lib/trpc";
+import { supabase } from "@/lib/supabase";
 
 interface UserVote {
   userId: string;
@@ -44,42 +44,39 @@ export const useNominationStore = create<NominationState>()(
         try {
           set({ isLoading: true });
           
-          try {
-            const result = await trpcClient.nominations.getNominations.query({
-              type,
-              day
+          // Build the query to fetch nominations from Supabase
+          let query = supabase.from('nominations').select('*');
+          
+          if (type) {
+            query = query.eq('category', type);
+          }
+          
+          if (day) {
+            query = query.eq('day', day);
+          }
+          
+          const { data, error } = await query;
+          
+          if (error) {
+            console.error("Error fetching nominations from Supabase:", error);
+            set({ isLoading: false });
+            return;
+          }
+          
+          if (data) {
+            set({
+              nominations: data.map(nom => ({
+                id: nom.nomination_id,
+                camperId: nom.camper_id,
+                reason: nom.reason || "",
+                day: nom.day,
+                type: nom.category as NominationType,
+                votes: nom.votes || 0
+              })),
+              lastUpdated: new Date(),
+              isLoading: false
             });
-            
-            if (!result || !result.nominations) {
-              console.error("Invalid response from server:", result);
-              set({ isLoading: false });
-              return;
-            }
-            
-            // Update nominations based on type and day
-            set((state) => {
-              // Create a map of existing nominations for quick lookup
-              const existingNominationsMap = new Map(
-                state.nominations.map(nom => [nom.id, nom])
-              );
-              
-              // Add or update nominations from the result
-              result.nominations.forEach(nom => {
-                existingNominationsMap.set(nom.id, nom);
-              });
-              
-              // Convert map back to array
-              const updatedNominations = Array.from(existingNominationsMap.values());
-              
-              return {
-                nominations: updatedNominations,
-                lastUpdated: new Date(result.timestamp),
-                isLoading: false
-              };
-            });
-          } catch (error) {
-            console.error("Error in TRPC call:", error);
-            // Don't update state on error, just set loading to false
+          } else {
             set({ isLoading: false });
           }
         } catch (error) {
@@ -92,44 +89,36 @@ export const useNominationStore = create<NominationState>()(
         try {
           set({ isLoading: true });
           
-          try {
-            const result = await trpcClient.nominations.getUserVotes.query({
-              userId,
-              nominationType,
-              day
+          // Build the query to fetch user votes from Supabase
+          let query = supabase.from('user_votes').select('*').eq('user_id', userId);
+          
+          if (nominationType) {
+            query = query.eq('nomination_type', nominationType);
+          }
+          
+          if (day) {
+            query = query.eq('day', day);
+          }
+          
+          const { data, error } = await query;
+          
+          if (error) {
+            console.error("Error fetching user votes from Supabase:", error);
+            set({ isLoading: false });
+            return;
+          }
+          
+          if (data) {
+            set({
+              userVotes: data.map(vote => ({
+                userId: vote.user_id,
+                nominationType: vote.nomination_type as NominationType,
+                day: vote.day,
+                timestamp: vote.timestamp
+              })),
+              isLoading: false
             });
-            
-            if (!result || !result.votes) {
-              console.error("Invalid response from server:", result);
-              set({ isLoading: false });
-              return;
-            }
-            
-            // Update user votes in the store
-            set((state) => {
-              // Create a map of existing votes for quick lookup
-              const existingVotesMap = new Map(
-                state.userVotes.map(vote => [
-                  `${vote.userId}-${vote.nominationType}-${vote.day}-${vote.timestamp}`,
-                  vote
-                ])
-              );
-              
-              // Add new votes from the result
-              result.votes.forEach(vote => {
-                existingVotesMap.set(
-                  `${vote.userId}-${vote.nominationType}-${vote.day}-${vote.timestamp}`,
-                  vote
-                );
-              });
-              
-              return {
-                userVotes: Array.from(existingVotesMap.values()),
-                isLoading: false
-              };
-            });
-          } catch (error) {
-            console.error("Error in TRPC call:", error);
+          } else {
             set({ isLoading: false });
           }
         } catch (error) {
@@ -142,48 +131,43 @@ export const useNominationStore = create<NominationState>()(
         try {
           set({ isLoading: true });
           
-          // First add locally for immediate feedback
-          const newId = Date.now().toString();
-          const newNomination = {
-            ...nomination,
-            id: newId,
-            votes: 0,
-          };
-          
-          set((state) => ({
-            nominations: [
-              ...state.nominations,
-              newNomination,
-            ],
-            lastUpdated: new Date(),
-          }));
-          
-          // Then add on the server
-          try {
-            const result = await trpcClient.nominations.addNomination.mutate({
-              camperId: nomination.camperId,
+          // Add nomination to Supabase
+          const { data, error } = await supabase
+            .from('nominations')
+            .insert([{
+              camper_id: nomination.camperId,
+              camper_name: nomination.camperName || "Unknown",
               reason: nomination.reason,
               day: nomination.day,
-              type: nomination.type,
-            });
-            
-            // Only update if server response is valid
-            if (result && result.nomination) {
-              set((state) => ({
-                nominations: state.nominations.map(nom => 
-                  nom.id === newId ? result.nomination : nom
-                ),
-                isLoading: false,
-                lastUpdated: new Date(),
-              }));
-            } else {
-              set({ isLoading: false });
-            }
-          } catch (serverError) {
-            console.error("Server error adding nomination:", serverError);
-            // Keep local changes even if server fails
+              category: nomination.type,
+              votes: 0
+            }])
+            .select();
+          
+          if (error) {
+            console.error("Error adding nomination to Supabase:", error);
             set({ isLoading: false });
+            return;
           }
+          
+          if (data && data.length > 0) {
+            const newNomination = {
+              id: data[0].nomination_id,
+              camperId: data[0].camper_id,
+              camperName: data[0].camper_name,
+              reason: data[0].reason || "",
+              day: data[0].day,
+              type: data[0].category as NominationType,
+              votes: data[0].votes || 0
+            };
+            
+            set((state) => ({
+              nominations: [...state.nominations, newNomination],
+              lastUpdated: new Date(),
+            }));
+          }
+          
+          set({ isLoading: false });
         } catch (error) {
           console.error("Error adding nomination:", error);
           set({ isLoading: false });
@@ -194,7 +178,50 @@ export const useNominationStore = create<NominationState>()(
         try {
           set({ isLoading: true });
           
-          // First update locally for immediate feedback
+          // Update vote count in Supabase
+          const { data: nominationData, error } = await supabase
+            .from('nominations')
+            .select('votes')
+            .eq('nomination_id', nominationId)
+            .single();
+          
+          if (error) {
+            console.error("Error fetching nomination votes from Supabase:", error);
+            set({ isLoading: false });
+            return;
+          }
+          
+          const newVotes = (nominationData?.votes || 0) + 1;
+          
+          const { error: updateError } = await supabase
+            .from('nominations')
+            .update({ votes: newVotes })
+            .eq('nomination_id', nominationId);
+          
+          if (updateError) {
+            console.error("Error updating nomination votes in Supabase:", updateError);
+            set({ isLoading: false });
+            return;
+          }
+          
+          // Record user vote in Supabase
+          const { error: voteError } = await supabase
+            .from('user_votes')
+            .insert([{
+              user_id: userId,
+              nomination_id: nominationId,
+              nomination_type: nominationType,
+              day: day,
+              timestamp: new Date().toISOString()
+            }]);
+          
+          if (voteError) {
+            console.error("Error recording user vote in Supabase:", voteError);
+            set({ isLoading: false });
+            return;
+          }
+          
+          // Update local state
           set((state) => ({
             nominations: state.nominations.map((nom) =>
               nom.id === nominationId
@@ -212,19 +239,6 @@ export const useNominationStore = create<NominationState>()(
             ],
             lastUpdated: new Date(),
           }));
-          
-          // Then update on the server
-          try {
-            await trpcClient.nominations.voteForNomination.mutate({
-              nominationId,
-              userId,
-              nominationType,
-              day,
-            });
-          } catch (serverError) {
-            console.error("Server error voting for nomination:", serverError);
-            // Keep local changes even if server fails
-          }
           
           set({ isLoading: false });
         } catch (error) {
@@ -244,28 +258,42 @@ export const useNominationStore = create<NominationState>()(
         try {
           set({ isLoading: true });
           
-          // First update locally for immediate feedback
+          // Reset votes in Supabase
+          const { error } = await supabase
+            .from('nominations')
+            .update({ votes: 0 })
+            .eq('day', day)
+            .eq('category', type);
+          
+          if (error) {
+            console.error("Error resetting votes in Supabase:", error);
+            set({ isLoading: false });
+            return;
+          }
+          
+          // Delete user votes for this day and type from Supabase
+          const { error: voteError } = await supabase
+            .from('user_votes')
+            .delete()
+            .eq('day', day)
+            .eq('nomination_type', type);
+          
+          if (voteError) {
+            console.error("Error resetting user votes in Supabase:", voteError);
+            set({ isLoading: false });
+            return;
+          }
+          
+          // Update local state
           set((state) => ({
             nominations: state.nominations.map((nom) =>
               nom.day === day && nom.type === type ? { ...nom, votes: 0 } : nom
             ),
-            // Also filter out user votes for this day and type
             userVotes: state.userVotes.filter(
               vote => !(vote.day === day && vote.nominationType === type)
             ),
             lastUpdated: new Date(),
           }));
-          
-          // Then update on the server
-          try {
-            await trpcClient.nominations.resetVotes.mutate({
-              day,
-              type,
-            });
-          } catch (serverError) {
-            console.error("Server error resetting votes:", serverError);
-            // Keep local changes even if server fails
-          }
           
           set({ isLoading: false });
         } catch (error) {
@@ -292,7 +320,6 @@ export const useNominationStore = create<NominationState>()(
       hasUserVoted: (userId, nominationType) => {
         const today = new Date().toLocaleDateString();
         
-        // For daily nominations, check if user has voted 2 times for the current day
         if (nominationType === "daily") {
           const dailyVotes = get().userVotes.filter(
             vote => vote.userId === userId && 
@@ -302,7 +329,6 @@ export const useNominationStore = create<NominationState>()(
           return dailyVotes.length >= 2;
         }
         
-        // For other nomination types, check if user has voted 2 times total
         const typeVotes = get().userVotes.filter(
           vote => vote.userId === userId && vote.nominationType === nominationType
         );
@@ -354,7 +380,6 @@ export const useNominationStore = create<NominationState>()(
       name: "nomination-storage",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        // Persist both nominations and user votes
         nominations: state.nominations,
         userVotes: state.userVotes,
         lastUpdated: state.lastUpdated
