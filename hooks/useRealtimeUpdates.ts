@@ -3,20 +3,21 @@ import { supabase } from '@/lib/supabase';
 import { useTeamStore } from '@/store/teamStore';
 import { useNominationStore } from '@/store/nominationStore';
 
+// Hook to subscribe to real-time updates from Supabase for teams and nominations
 export const useRealtimeUpdates = () => {
   const { fetchTeams } = useTeamStore();
   const { fetchNominations } = useNominationStore();
 
   useEffect(() => {
-    // Subscribe to changes in the 'points' table for team updates
+    // Subscribe to changes in the 'points' table for team points updates
     const pointsSubscription = supabase
       .channel('public:points')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'points'
+        table: 'points',
       }, () => {
-        console.log('Points updated, refreshing teams');
+        // When a change is detected, refetch the teams data to update points
         fetchTeams();
       })
       .subscribe();
@@ -27,19 +28,33 @@ export const useRealtimeUpdates = () => {
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'nominations'
+        table: 'nominations',
       }, () => {
-        console.log('Nominations updated, refreshing nominations');
+        // When a change is detected, refetch the nominations data
         fetchNominations();
       })
       .subscribe();
 
-    // Clean up subscriptions on component unmount
+    // Subscribe to changes in the 'user_votes' table for nomination vote updates
+    const votesSubscription = supabase
+      .channel('public:user_votes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'user_votes',
+      }, () => {
+        // When a change is detected, refetch the nominations data to update votes
+        fetchNominations();
+      })
+      .subscribe();
+
+    // Clean up subscriptions when the component unmounts
     return () => {
-      supabase.removeChannel(pointsSubscription);
-      supabase.removeChannel(nominationsSubscription);
+      pointsSubscription.unsubscribe();
+      nominationsSubscription.unsubscribe();
+      votesSubscription.unsubscribe();
     };
   }, [fetchTeams, fetchNominations]);
 
-  return null;
+  // No return value needed, this hook just sets up subscriptions
 };
