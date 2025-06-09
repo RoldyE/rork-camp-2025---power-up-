@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { teams, pointHistory } from "./updatePoints/route";
+import { teams, pointHistory } from "../updatePoints/route";
 import { Team } from "@/types";
 
 export default publicProcedure
