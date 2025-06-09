@@ -13,12 +13,10 @@ import { useAuthStore } from "@/store/authStore";
 type NominationCardProps = {
   nomination: Nomination;
   onDelete?: () => void;
-  onVote?: () => void;
-  disabled?: boolean;
 };
 
-export const NominationCard = ({ nomination, onDelete, onVote, disabled = false }: NominationCardProps) => {
-  const { voteForNomination, deleteNomination, hasUserVoted, getUserVoteCount } = useNominationStore();
+export const NominationCard = ({ nomination, onDelete }: NominationCardProps) => {
+  const { voteForNomination, deleteNomination, hasUserVoted } = useNominationStore();
   const { userProfile } = useAuthStore();
   const camper = campers.find((c) => c.id === nomination.camperId);
   const team = camper ? teams.find((t) => t.id === camper.teamId) : null;
@@ -29,12 +27,6 @@ export const NominationCard = ({ nomination, onDelete, onVote, disabled = false 
   const typeLabel = getNominationTypeLabel(nomination.type);
   
   const handleVote = async () => {
-    if (onVote) {
-      // Use the provided onVote handler if available
-      onVote();
-      return;
-    }
-    
     if (!userProfile) {
       Alert.alert("Login Required", "Please log in to vote");
       return;
@@ -42,21 +34,14 @@ export const NominationCard = ({ nomination, onDelete, onVote, disabled = false 
     
     // Check if user has already voted for this nomination type
     const hasVoted = hasUserVoted(userProfile.id, nomination.type);
-    const voteCount = getUserVoteCount(userProfile.id, nomination.type, nomination.type === "daily" ? nomination.day : "all");
     
-    if (hasVoted || voteCount >= 2) {
+    if (hasVoted) {
       Alert.alert("Already Voted", "You have already used your votes for this category");
       return;
     }
     
-    try {
-      // Record the vote
-      await voteForNomination(nomination.id, userProfile.id, nomination.type, nomination.day);
-      Alert.alert("Vote Recorded", "Your vote has been counted!");
-    } catch (error) {
-      console.error("Error voting:", error);
-      Alert.alert("Error", "Failed to record your vote. Please try again.");
-    }
+    // Record the vote
+    await voteForNomination(nomination.id, userProfile.id, nomination.type, nomination.day);
   };
   
   const handleDelete = () => {
@@ -78,13 +63,13 @@ export const NominationCard = ({ nomination, onDelete, onVote, disabled = false 
   };
   
   return (
-    <Pressable style={styles.card}>
+    <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.camperInfo}>
           <View style={styles.imageContainer}>
-            {camper.imageUrl ? (
+            {camper.image ? (
               <Image 
-                source={{ uri: camper.imageUrl }} 
+                source={{ uri: camper.image }} 
                 style={styles.image} 
                 contentFit="cover"
               />
@@ -117,22 +102,14 @@ export const NominationCard = ({ nomination, onDelete, onVote, disabled = false 
         <Text style={[styles.typeBadgeText, { color: typeColor }]}>{typeLabel}</Text>
       </View>
       
-      <View style={styles.dayBadge}>
-        <Text style={styles.dayBadgeText}>{nomination.day}</Text>
-      </View>
-      
       <View style={styles.reasonContainer}>
         <Text style={styles.reasonLabel}>Nomination Reason:</Text>
         <Text style={styles.reason}>{nomination.reason}</Text>
       </View>
       <View style={styles.footer}>
         <Pressable 
-          style={[
-            styles.voteButton, 
-            { backgroundColor: disabled ? colors.textLight : typeColor }
-          ]}
+          style={[styles.voteButton, { backgroundColor: typeColor }]}
           onPress={handleVote}
-          disabled={disabled}
         >
           <Text style={styles.voteButtonText}>Vote</Text>
         </Pressable>
@@ -143,7 +120,7 @@ export const NominationCard = ({ nomination, onDelete, onVote, disabled = false 
           <Trash2 size={16} color={colors.error} />
         </Pressable>
       </View>
-    </Pressable>
+    </View>
   );
 };
 
@@ -225,24 +202,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   typeBadgeText: {
     fontSize: 12,
     fontWeight: "600",
-  },
-  dayBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 12,
-    backgroundColor: colors.secondary + "20",
-  },
-  dayBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.secondary,
   },
   reasonContainer: {
     marginBottom: 16,

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { userVotes } from "../voteForNomination/route";
-import { UserVote } from "@/types";
 
 export default publicProcedure
   .input(
@@ -14,36 +13,26 @@ export default publicProcedure
   .query(({ input }) => {
     const { userId, nominationType, day } = input;
     
-    let filteredVotes: UserVote[] = [];
+    let filteredVotes = userVotes.filter(vote => vote.userId === userId);
     
-    // Filter votes based on input parameters
-    if (userId && nominationType && day) {
-      // Filter by all three parameters
-      filteredVotes = userVotes.filter((vote: UserVote) => 
-        vote.userId === userId && 
-        vote.nominationType === nominationType && 
-        vote.day === day
-      );
-    } else if (userId && nominationType) {
-      // Filter by userId and nominationType
-      filteredVotes = userVotes.filter((vote: UserVote) => 
-        vote.userId === userId && 
-        vote.nominationType === nominationType
-      );
-    } else if (userId && day) {
-      // Filter by userId and day
-      filteredVotes = userVotes.filter((vote: UserVote) => 
-        vote.userId === userId && 
-        vote.day === day
-      );
-    } else if (userId) {
-      // Filter by userId only
-      filteredVotes = userVotes.filter((vote: UserVote) => vote.userId === userId);
+    if (nominationType) {
+      filteredVotes = filteredVotes.filter(vote => vote.nominationType === nominationType);
+    }
+    
+    if (day) {
+      if (day === "today") {
+        const today = new Date().toLocaleDateString();
+        filteredVotes = filteredVotes.filter(
+          vote => new Date(vote.timestamp).toLocaleDateString() === today
+        );
+      } else if (day !== "all") {
+        filteredVotes = filteredVotes.filter(vote => vote.day === day);
+      }
     }
     
     return {
-      success: true,
       votes: filteredVotes,
+      count: filteredVotes.length,
       timestamp: new Date(),
     };
   });

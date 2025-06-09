@@ -3,43 +3,17 @@ import { publicProcedure } from "../../../create-context";
 import { teams as initialTeams } from "@/mocks/teams";
 import { PointEntry, Team } from "@/types";
 
-// Define types for global storage
-interface GlobalStorage {
-  teams?: Team[];
-  pointHistory?: Record<string, PointEntry[]>;
-}
+// In-memory database for teams and point history
+// This needs to be exported so other routes can access the same reference
+export let teams: Team[] = [...initialTeams];
 
-// Get the global object
-const globalObj = global as unknown as GlobalStorage;
+// Separate storage for point history
+export let pointHistory: Record<string, PointEntry[]> = {};
 
-// Initialize teams with zero points instead of default values
-// This ensures all clients start with the same base state
-const zeroPointTeams = initialTeams.map(team => ({
-  ...team,
-  points: 0,
-}));
-
-// In-memory database for teams and point history - make it global for persistence
-if (!globalObj.teams) {
-  globalObj.teams = [...zeroPointTeams];
-}
-
-// Export the global reference
-export let teams = globalObj.teams;
-
-// Separate storage for point history - also make it global
-if (!globalObj.pointHistory) {
-  globalObj.pointHistory = {};
-}
-
-export let pointHistory = globalObj.pointHistory;
-
-// Initialize point history for each team if not already done
-if (Object.keys(pointHistory).length === 0) {
-  initialTeams.forEach((team: Team) => {
-    pointHistory[team.id] = [];
-  });
-}
+// Initialize point history for each team
+initialTeams.forEach(team => {
+  pointHistory[team.id] = [];
+});
 
 export default publicProcedure
   .input(
@@ -53,7 +27,7 @@ export default publicProcedure
     const { teamId, points, reason } = input;
     
     // Find the team and update its points
-    const teamIndex = teams.findIndex((team: Team) => team.id === teamId);
+    const teamIndex = teams.findIndex(team => team.id === teamId);
     
     if (teamIndex === -1) {
       throw new Error(`Team with ID ${teamId} not found`);
@@ -79,8 +53,6 @@ export default publicProcedure
     }
     
     pointHistory[teamId].push(pointEntry);
-    
-    console.log(`Updated points for team ${teamId}. New total: ${teams[teamIndex].points}`);
     
     return {
       success: true,

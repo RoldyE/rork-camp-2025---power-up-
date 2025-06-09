@@ -1,42 +1,11 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { nominations as initialNominations } from "@/mocks/nominations";
-import { Nomination, NominationType } from "@/types";
+import { NominationType, Nomination } from "@/types";
 
-// Define types for global storage
-interface GlobalStorage {
-  nominations?: Nomination[];
-  nominationsByTypeAndDay?: Record<string, Nomination[]>;
-}
-
-// Get the global object
-const globalObj = global as unknown as GlobalStorage;
-
-// In-memory database for nominations - make it global for persistence
-if (!globalObj.nominations) {
-  globalObj.nominations = [...initialNominations];
-}
-
-// Export the global reference
-export let nominations = globalObj.nominations;
-
-// Create a map to store nominations by type and day for faster lookups
-if (!globalObj.nominationsByTypeAndDay) {
-  globalObj.nominationsByTypeAndDay = {};
-}
-
-export let nominationsByTypeAndDay = globalObj.nominationsByTypeAndDay;
-
-// Initialize the map if it's empty
-if (Object.keys(nominationsByTypeAndDay).length === 0) {
-  initialNominations.forEach((nom: Nomination) => {
-    const key = `${nom.type}-${nom.day}`;
-    if (!nominationsByTypeAndDay[key]) {
-      nominationsByTypeAndDay[key] = [];
-    }
-    nominationsByTypeAndDay[key].push(nom);
-  });
-}
+// In-memory database for nominations
+// Export this so other routes can access the same reference
+export let nominations: Nomination[] = [...initialNominations];
 
 export default publicProcedure
   .input(
@@ -44,34 +13,24 @@ export default publicProcedure
       camperId: z.string(),
       reason: z.string(),
       day: z.string(),
-      type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]),
+      type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"])
     })
   )
   .mutation(({ input }) => {
     const { camperId, reason, day, type } = input;
     
-    // Create a new nomination
+    // Create a new nomination with the correct type
     const newNomination: Nomination = {
       id: Date.now().toString(),
       camperId,
       reason,
       day,
-      type,
+      type: type as NominationType,
       votes: 0,
-      timestamp: new Date().toISOString(),
     };
     
-    // Add to the main nominations array
+    // Add the nomination to the database
     nominations.push(newNomination);
-    
-    // Add to the type-day map
-    const key = `${type}-${day}`;
-    if (!nominationsByTypeAndDay[key]) {
-      nominationsByTypeAndDay[key] = [];
-    }
-    nominationsByTypeAndDay[key].push(newNomination);
-    
-    console.log(`Added new nomination for camper ${camperId} of type ${type} for day ${day}`);
     
     return {
       success: true,

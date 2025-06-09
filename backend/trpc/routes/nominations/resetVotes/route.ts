@@ -1,48 +1,48 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { nominations, nominationsByTypeAndDay } from "../addNomination/route";
+import { nominations } from "../addNomination/route";
 import { userVotes } from "../voteForNomination/route";
-import { Nomination, UserVote } from "@/types";
 
 export default publicProcedure
   .input(
     z.object({
-      day: z.string(),
-      type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]),
+      day: z.string().optional(),
+      type: z.string().optional(),
     })
   )
   .mutation(({ input }) => {
     const { day, type } = input;
     
-    // Reset votes for nominations of the specified type and day
-    nominations.forEach((nom: Nomination, index: number) => {
-      if (nom.type === type && nom.day === day) {
+    // Reset votes for nominations matching the criteria
+    nominations.forEach((nom, index) => {
+      if ((!day || nom.day === day) && (!type || nom.type === type)) {
         nominations[index] = {
           ...nom,
-          votes: 0
+          votes: 0,
         };
       }
     });
     
-    // Reset votes in the type-day map
-    const key = `${type}-${day}`;
-    if (nominationsByTypeAndDay[key]) {
-      nominationsByTypeAndDay[key] = nominationsByTypeAndDay[key].map((nom: Nomination) => ({
-        ...nom,
-        votes: 0
-      }));
+    // Reset user votes if requested
+    if (day || type) {
+      // Filter out votes that match the criteria
+      const filteredVotes = userVotes.filter(vote => {
+        if (day && type) {
+          return !(vote.day === day && vote.nominationType === type);
+        }
+        if (day) {
+          return vote.day !== day;
+        }
+        if (type) {
+          return vote.nominationType !== type;
+        }
+        return true;
+      });
+      
+      // Clear the array and add back the filtered votes
+      userVotes.length = 0;
+      filteredVotes.forEach(vote => userVotes.push(vote));
     }
-    
-    // Remove user votes for this type and day
-    const filteredVotes = userVotes.filter((vote: UserVote) => 
-      !(vote.nominationType === type && vote.day === day)
-    );
-    
-    // Update the userVotes array
-    userVotes.length = 0;
-    filteredVotes.forEach((vote: UserVote) => userVotes.push(vote));
-    
-    console.log(`Reset votes for nominations of type ${type} for day ${day}`);
     
     return {
       success: true,

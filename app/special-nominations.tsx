@@ -36,13 +36,12 @@ export default function SpecialNominationsScreen() {
     fetchNominations(selectedType);
   }, [selectedType]);
   
-  // Set up polling to keep nominations data fresh - DISABLED automatic polling
+  // Set up polling to keep nominations data fresh - reduced frequency
   const { poll } = usePolling(
     () => fetchNominations(selectedType), 
     { 
-      interval: 600000, // Poll every 10 minutes (increased from 5 minutes)
-      immediate: false, // Don't poll immediately on mount (we already fetch in useEffect)
-      enabled: false // Disable automatic polling completely
+      interval: 60000, // Poll every 60 seconds
+      immediate: false // Don't poll immediately on mount (we already fetch in useEffect)
     }
   );
   

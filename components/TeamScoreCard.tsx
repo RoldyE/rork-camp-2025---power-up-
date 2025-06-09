@@ -1,111 +1,95 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Team } from "@/types";
 import { colors } from "@/constants/colors";
+import { useRouter } from "expo-router";
+import { ChevronRight } from "lucide-react-native";
 
 type TeamScoreCardProps = {
   team: Team;
-  position?: number;
   onPress?: () => void;
 };
 
-export const TeamScoreCard = ({ team, position, onPress }: TeamScoreCardProps) => {
+export const TeamScoreCard = ({ team, onPress }: TeamScoreCardProps) => {
+  const router = useRouter();
+  
+  const handleViewDetails = () => {
+    router.push(`/team-details/${team.id}`);
+  };
+  
   return (
-    <TouchableOpacity 
-      style={styles.card}
-      onPress={onPress}
-      disabled={!onPress}
+    <Pressable 
+      onPress={handleViewDetails} 
+      style={({ pressed }) => [
+        styles.card,
+        { opacity: pressed ? 0.9 : 1 }
+      ]}
     >
-      {position && (
-        <View style={[
-          styles.rankBadge,
-          position === 1 ? styles.firstPlace : 
-          position === 2 ? styles.secondPlace : 
-          position === 3 ? styles.thirdPlace : 
-          styles.otherPlace
-        ]}>
-          <Text style={styles.rankText}>{position}</Text>
-        </View>
-      )}
-      
-      <View style={styles.teamInfo}>
-        <View style={[styles.teamDot, { backgroundColor: team.color }]} />
+      <View style={[styles.colorBar, { backgroundColor: team.color }]} />
+      <View style={styles.contentContainer}>
         <Text style={styles.teamName}>{team.name}</Text>
       </View>
-      
-      <View style={styles.scoreContainer}>
-        <Text style={styles.scoreText}>{team.points}</Text>
-        <Text style={styles.pointsLabel}>points</Text>
+      <View style={styles.pointsContainer}>
+        <Text style={styles.pointsLabel}>Points</Text>
+        <Text style={styles.pointsValue}>{team.points}</Text>
       </View>
-    </TouchableOpacity>
+      <View style={styles.detailsButton}>
+        <ChevronRight size={18} color={colors.primary} />
+      </View>
+    </Pressable>
   );
+};
+
+export const TeamScoreList = () => {
+  const teams = []; // This is just a placeholder, the actual implementation is in the teams.tsx file
+  return null;
 };
 
 const styles = StyleSheet.create({
   card: {
+    flexDirection: "row",
     backgroundColor: colors.card,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
+    marginBottom: 12,
   },
-  rankBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
+  colorBar: {
+    width: 8,
   },
-  firstPlace: {
-    backgroundColor: "#FFD700",
-  },
-  secondPlace: {
-    backgroundColor: "#C0C0C0",
-  },
-  thirdPlace: {
-    backgroundColor: "#CD7F32",
-  },
-  otherPlace: {
-    backgroundColor: colors.border,
-  },
-  rankText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  teamInfo: {
+  contentContainer: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  teamDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
+    padding: 16,
+    justifyContent: "center",
   },
   teamName: {
     fontSize: 16,
     fontWeight: "600",
     color: colors.text,
   },
-  scoreContainer: {
+  pointsContainer: {
+    padding: 16,
     alignItems: "center",
-  },
-  scoreText: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.primary,
+    justifyContent: "center",
   },
   pointsLabel: {
     fontSize: 12,
     color: colors.textLight,
+  },
+  pointsValue: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  detailsButton: {
+    width: 40,
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: `${colors.primary}10`,
   },
 });

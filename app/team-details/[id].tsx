@@ -23,18 +23,16 @@ export default function TeamDetailsScreen() {
     fetchTeams();
   }, []);
   
-  // Set up polling to keep team data fresh - DISABLED automatic polling
+  // Set up polling to keep team data fresh
   const { poll } = usePolling(fetchTeams, { 
-    interval: 300000, // Poll every 5 minutes
-    immediate: false, // Don't poll immediately on mount (we already fetch in useEffect)
-    enabled: false // Disable automatic polling
+    interval: 60000, // Poll every 60 seconds
+    immediate: false // Don't poll immediately on mount (we already fetch in useEffect)
   });
   
   // Manual poll when screen becomes active
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active') {
-        // Only poll when app becomes active
         poll();
       }
     });

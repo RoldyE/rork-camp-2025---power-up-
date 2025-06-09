@@ -1,86 +1,76 @@
-export type NominationType = "daily" | "sportsmanship" | "bravery" | "service" | "scholar" | "other";
-
-export interface Camper {
-  id: string;
-  name: string;
-  age: number;
-  teamId: string;
-  imageUrl?: string;
-}
-
-export interface Team {
+export type Team = {
   id: string;
   name: string;
   color: string;
   points: number;
-  pointHistory: PointEntry[];
-}
+  pointHistory?: PointEntry[];
+};
 
-export interface PointEntry {
+export type PointEntry = {
   id: string;
   points: number;
   reason: string;
   date: string;
-}
+};
 
-export interface Nomination {
-  id: string;
-  camperId: string;
-  reason: string;
-  day: string;
-  type: NominationType;
-  votes: number;
-  timestamp: string;
-}
-
-export interface UserVote {
-  userId: string;
-  nominationType: NominationType;
-  day: string;
-  timestamp: string;
-}
-
-export interface Game {
+export type ScheduleItem = {
   id: string;
   title: string;
   description: string;
-  location: string;
-  date: string;
-  time: string;
-  teamIds: string[];
-  imageUrl?: string;
-  rules?: string[];
-  equipment?: string[];
-  winner?: string;
-  scores?: Record<string, number>;
-}
-
-export interface ScheduleItem {
-  id: string;
-  title: string;
-  description?: string;
   startTime: string;
   endTime: string;
   location: string;
   day: string;
-  type: "activity" | "meal" | "game" | "ceremony" | "other";
-}
+};
 
-export interface Resource {
+export type GameScheduleItem = {
   id: string;
   title: string;
   description: string;
-  url: string;
-  category: "forms" | "guides" | "maps" | "contacts" | "emergency" | "other";
-  icon?: string;
-}
+  startTime: string;
+  endTime: string;
+  location: string;
+  day: string;
+  teams: string[];
+  instructions: string;
+};
 
-export interface Notification {
+export type Camper = {
+  id: string;
+  name: string;
+  teamId: string;
+  image?: string;
+  facebookId?: string;
+};
+
+export type NominationType = 'daily' | 'sportsmanship' | 'bravery' | 'service' | 'scholar' | 'other';
+
+export type Nomination = {
+  id: string;
+  camperId: string;
+  reason: string;
+  votes: number;
+  day: string;
+  type: NominationType;
+};
+
+export type Resource = {
+  id: string;
+  name: string;
+  description: string;
+  type: "pdf" | "doc" | "image" | "other" | "link";
+  uri: string;
+  size: number;
+  dateAdded: string;
+  category: "devotional" | "activity" | "general" | "scoring" | "communication";
+};
+
+export type Notification = {
   id: string;
   title: string;
   message: string;
   timestamp: string;
   read: boolean;
-  type: "announcement" | "alert" | "reminder" | "other";
+  type: 'schedule' | 'game' | 'nomination' | 'team' | 'general';
   link?: string;
-}
+};

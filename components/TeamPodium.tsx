@@ -1,19 +1,11 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Image } from "react-native";
 import { colors } from "@/constants/colors";
 import { useTeamStore } from "@/store/teamStore";
 import { Trophy } from "lucide-react-native";
-import { Team } from "@/types";
 
-interface TeamPodiumProps {
-  teams?: Team[]; // Make teams optional, will use store if not provided
-}
-
-export const TeamPodium: React.FC<TeamPodiumProps> = ({ teams: propTeams }) => {
-  const { teams: storeTeams } = useTeamStore();
-  
-  // Use provided teams or fall back to store teams
-  const teams = propTeams || storeTeams;
+export const TeamPodium = () => {
+  const { teams } = useTeamStore();
   
   // Sort teams by points (highest first)
   const sortedTeams = [...teams].sort((a, b) => b.points - a.points);

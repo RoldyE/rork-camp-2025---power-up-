@@ -1,37 +1,30 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { nominations, nominationsByTypeAndDay } from "../addNomination/route";
-import { Nomination } from "@/types";
+import { nominations } from "../addNomination/route";
 
 export default publicProcedure
   .input(
     z.object({
-      type: z.enum(["daily", "sportsmanship", "bravery", "service", "scholar", "other"]).optional(),
+      type: z.string().optional(),
       day: z.string().optional(),
     })
   )
   .query(({ input }) => {
-    const { type, day } = input;
+    let filteredNominations = [...nominations];
     
-    let filteredNominations: Nomination[] = [];
+    if (input.type) {
+      filteredNominations = filteredNominations.filter(
+        (nom) => nom.type === input.type
+      );
+    }
     
-    if (type && day) {
-      // Use the type-day map for faster lookups
-      const key = `${type}-${day}`;
-      filteredNominations = nominationsByTypeAndDay[key] || [];
-    } else if (type) {
-      // Filter by type only
-      filteredNominations = nominations.filter(nom => nom.type === type);
-    } else if (day) {
-      // Filter by day only
-      filteredNominations = nominations.filter(nom => nom.day === day);
-    } else {
-      // Return all nominations
-      filteredNominations = [...nominations];
+    if (input.day) {
+      filteredNominations = filteredNominations.filter(
+        (nom) => nom.day === input.day
+      );
     }
     
     return {
-      success: true,
       nominations: filteredNominations,
       timestamp: new Date(),
     };
