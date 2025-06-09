@@ -13,7 +13,7 @@ export default function TeamsScreen() {
   // Initial fetch
   useEffect(() => {
     fetchTeams();
-  }, []);
+  }, [fetchTeams]);
 
   // Set up polling to keep teams data fresh - reduced frequency
   const { poll } = usePolling(fetchTeams, { 

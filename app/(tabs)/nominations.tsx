@@ -40,7 +40,7 @@ export default function NominationsScreen() {
     };
     
     fetchData();
-  }, [selectedType, selectedDay]);
+  }, [selectedType, selectedDay, fetchNominations]);
   
   // Set up polling to keep nominations data fresh - reduced frequency
   const { poll } = usePolling(

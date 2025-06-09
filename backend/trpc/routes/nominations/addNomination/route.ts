@@ -35,7 +35,7 @@ export default publicProcedure
       }
       
       if (data) {
-        const newNomination: Nomination = {
+        const newNOMination: Nomination = {
           id: data.nomination_id,
           camperId: data.camper_id,
           reason: data.reason || "",
@@ -46,7 +46,7 @@ export default publicProcedure
         
         return {
           success: true,
-          nomination: newNomination,
+          nomination: newNOMination,
           timestamp: new Date(),
         };
       } else {
