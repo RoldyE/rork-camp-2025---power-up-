@@ -68,7 +68,7 @@ export default publicProcedure
         success: true,
         team: updatedTeam,
         pointHistory,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(), // Ensure serializable format
       };
     } catch (error) {
       console.error("Error in updatePoints procedure:", error);

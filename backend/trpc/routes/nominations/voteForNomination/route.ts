@@ -73,7 +73,7 @@ export default publicProcedure
       return {
         success: true,
         nomination: updatedNomination,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(), // Ensure serializable format
       };
     } catch (error) {
       console.error("Error in voteForNomination procedure:", error);
