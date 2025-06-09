@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import { View, StyleSheet, FlatList, Text, ActivityIndicator, AppState } from "react-native";
 import { Header } from "@/components/Header";
 import { colors } from "@/constants/colors";
@@ -17,7 +17,7 @@ export default function TeamsScreen() {
 
   // Set up polling to keep teams data fresh - reduced frequency
   const { poll } = usePolling(fetchTeams, { 
-    interval: 300000, // Poll every 5 minutes
+    interval: 60000, // Poll every 1 minute
     immediate: false, // Don't poll immediately on mount (we already fetch in useEffect)
     enabled: false // Disable automatic polling
   });

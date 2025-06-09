@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
-import { nominations } from "../addNomination/route";
+import { nominations, nominationsMap } from "../addNomination/route";
 import { NominationType } from "@/types";
 
 // In-memory database for user votes
@@ -24,10 +24,10 @@ export default publicProcedure
   .mutation(({ input }) => {
     const { nominationId, userId, nominationType, day } = input;
     
-    // Find the nomination
-    const nominationIndex = nominations.findIndex(nom => nom.id === nominationId);
+    // Find the nomination using the map for faster lookup
+    const nomination = nominationsMap.get(nominationId);
     
-    if (nominationIndex === -1) {
+    if (!nomination) {
       throw new Error(`Nomination with ID ${nominationId} not found`);
     }
     
@@ -40,14 +40,17 @@ export default publicProcedure
     });
     
     // Update the nomination votes
-    nominations[nominationIndex] = {
-      ...nominations[nominationIndex],
-      votes: nominations[nominationIndex].votes + 1,
-    };
+    nomination.votes += 1;
+    
+    // Also update the nomination in the array to keep both in sync
+    const nominationIndex = nominations.findIndex(nom => nom.id === nominationId);
+    if (nominationIndex !== -1) {
+      nominations[nominationIndex] = nomination;
+    }
     
     return {
       success: true,
-      nomination: nominations[nominationIndex],
+      nomination,
       timestamp: new Date(),
     };
   });

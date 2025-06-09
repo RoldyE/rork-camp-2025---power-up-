@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, StyleSheet, FlatList, Text, Pressable, Alert, ActivityIndicator, AppState } from "react-native";
 import { DaySelector } from "@/components/DaySelector";
 import { Header } from "@/components/Header";
@@ -52,7 +52,7 @@ export default function NominationsScreen() {
       }
     }, 
     { 
-      interval: 300000, // Poll every 5 minutes
+      interval: 60000, // Poll every 1 minute
       immediate: false, // Don't poll immediately on mount (we already fetch in useEffect)
       enabled: false // Disable automatic polling
     }

@@ -7,6 +7,12 @@ import { NominationType, Nomination } from "@/types";
 // Export this so other routes can access the same reference
 export let nominations: Nomination[] = [...initialNominations];
 
+// Create a map to track nominations by ID for faster lookups
+const nominationsMap = new Map<string, Nomination>();
+initialNominations.forEach(nom => {
+  nominationsMap.set(nom.id, nom);
+});
+
 export default publicProcedure
   .input(
     z.object({
@@ -29,8 +35,9 @@ export default publicProcedure
       votes: 0,
     };
     
-    // Add the nomination to the database
+    // Add the nomination to both the array and the map
     nominations.push(newNomination);
+    nominationsMap.set(newNomination.id, newNomination);
     
     return {
       success: true,

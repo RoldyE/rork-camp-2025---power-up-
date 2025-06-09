@@ -18,7 +18,7 @@ export function usePolling(
   options: PollingOptions = {}
 ) {
   const { 
-    interval = 300000, // Increased to 5 minutes by default to reduce frequency
+    interval = 60000, // Reduced to 1 minute to balance freshness and performance
     enabled = true, 
     onError,
     immediate = true 
@@ -30,6 +30,7 @@ export function usePolling(
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
   const isPollingRef = useRef(isPolling);
+  const lastFetchTimeRef = useRef<number>(0);
 
   const startPolling = () => {
     setIsPolling(true);
@@ -47,6 +48,18 @@ export function usePolling(
 
   const poll = async () => {
     if (!isPollingRef.current || !isMountedRef.current) return;
+    
+    // Throttle fetching to prevent excessive calls
+    const now = Date.now();
+    if (now - lastFetchTimeRef.current < 10000) { // Minimum 10 seconds between fetches
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(poll, 10000);
+      return;
+    }
+    
+    lastFetchTimeRef.current = now;
     
     try {
       await fetchFn();

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, Pressable, Alert, ScrollView, ActivityIndicator } from "react-native";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import { colors } from "@/constants/colors";
@@ -51,10 +51,10 @@ export default function AddNominationScreen() {
           { 
             text: "OK", 
             onPress: () => {
+              // Navigate back to the correct screen based on nomination type
               if (selectedType === "daily") {
                 router.push({
                   pathname: "/(tabs)/nominations",
-                  params: { type: selectedType, day: selectedDay }
                 });
               } else {
                 router.push({
@@ -88,7 +88,14 @@ export default function AddNominationScreen() {
           <Text style={styles.sectionTitle}>Nomination Type</Text>
           <NominationTypeSelector
             selectedType={selectedType}
-            onSelectType={setSelectedType}
+            onSelectType={(type) => {
+              setSelectedType(type);
+              // When type changes, make sure we're still using the correct day
+              if (type !== "daily") {
+                // For non-daily nominations, day doesn't matter as much
+                // but we'll keep it for consistency
+              }
+            }}
           />
         </View>
         
