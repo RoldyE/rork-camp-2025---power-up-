@@ -17,7 +17,7 @@ export default function TeamsScreen() {
 
   // Set up polling to keep teams data fresh - reduced frequency
   const { poll } = usePolling(fetchTeams, { 
-    interval: 60000, // Poll every 1 minute
+    interval: 300000, // Poll every 5 minutes
     immediate: false, // Don't poll immediately on mount (we already fetch in useEffect)
     enabled: false // Disable automatic polling
   });

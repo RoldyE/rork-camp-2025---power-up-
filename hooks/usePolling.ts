@@ -18,7 +18,7 @@ export function usePolling(
   options: PollingOptions = {}
 ) {
   const { 
-    interval = 60000, // Reduced to 1 minute to balance freshness and performance
+    interval = 300000, // Increased to 5 minutes to reduce server load
     enabled = true, 
     onError,
     immediate = true 
@@ -51,11 +51,11 @@ export function usePolling(
     
     // Throttle fetching to prevent excessive calls
     const now = Date.now();
-    if (now - lastFetchTimeRef.current < 10000) { // Minimum 10 seconds between fetches
+    if (now - lastFetchTimeRef.current < 30000) { // Minimum 30 seconds between fetches
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      timeoutRef.current = setTimeout(poll, 10000);
+      timeoutRef.current = setTimeout(poll, 30000);
       return;
     }
     
@@ -68,6 +68,7 @@ export function usePolling(
         setError(null);
       }
     } catch (err) {
+      console.log("Polling error:", err);
       if (isMountedRef.current) {
         setError(err as Error);
         if (onError) {

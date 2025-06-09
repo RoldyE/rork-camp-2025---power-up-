@@ -23,25 +23,30 @@ export default publicProcedure
     })
   )
   .mutation(({ input }) => {
-    const { camperId, reason, day, type } = input;
-    
-    // Create a new nomination with the correct type
-    const newNomination: Nomination = {
-      id: Date.now().toString(),
-      camperId,
-      reason,
-      day,
-      type: type as NominationType,
-      votes: 0,
-    };
-    
-    // Add the nomination to both the array and the map
-    nominations.push(newNomination);
-    nominationsMap.set(newNomination.id, newNomination);
-    
-    return {
-      success: true,
-      nomination: newNomination,
-      timestamp: new Date(),
-    };
+    try {
+      const { camperId, reason, day, type } = input;
+      
+      // Create a new nomination with the correct type
+      const newNomination: Nomination = {
+        id: Date.now().toString(),
+        camperId,
+        reason,
+        day,
+        type: type as NominationType,
+        votes: 0,
+      };
+      
+      // Add the nomination to both the array and the map
+      nominations.push(newNomination);
+      nominationsMap.set(newNomination.id, newNomination);
+      
+      return {
+        success: true,
+        nomination: newNomination,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      console.error("Error in addNomination procedure:", error);
+      throw new Error("Failed to add nomination");
+    }
   });

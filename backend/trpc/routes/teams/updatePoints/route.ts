@@ -7,6 +7,12 @@ import { PointEntry, Team } from "@/types";
 // This needs to be exported so other routes can access the same reference
 export let teams: Team[] = [...initialTeams];
 
+// Initialize teams with zero points to avoid default values
+teams = teams.map(team => ({
+  ...team,
+  points: 0
+}));
+
 // Separate storage for point history
 export let pointHistory: Record<string, PointEntry[]> = {};
 
@@ -24,40 +30,45 @@ export default publicProcedure
     })
   )
   .mutation(({ input }) => {
-    const { teamId, points, reason } = input;
-    
-    // Find the team and update its points
-    const teamIndex = teams.findIndex(team => team.id === teamId);
-    
-    if (teamIndex === -1) {
-      throw new Error(`Team with ID ${teamId} not found`);
+    try {
+      const { teamId, points, reason } = input;
+      
+      // Find the team and update its points
+      const teamIndex = teams.findIndex(team => team.id === teamId);
+      
+      if (teamIndex === -1) {
+        throw new Error(`Team with ID ${teamId} not found`);
+      }
+      
+      // Create a new point history entry
+      const pointEntry: PointEntry = {
+        id: Date.now().toString(),
+        points,
+        reason,
+        date: new Date().toISOString()
+      };
+      
+      // Update the team points
+      teams[teamIndex] = {
+        ...teams[teamIndex],
+        points: teams[teamIndex].points + points
+      };
+      
+      // Add to point history
+      if (!pointHistory[teamId]) {
+        pointHistory[teamId] = [];
+      }
+      
+      pointHistory[teamId].push(pointEntry);
+      
+      return {
+        success: true,
+        team: teams[teamIndex],
+        pointHistory: pointHistory[teamId],
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      console.error("Error in updatePoints procedure:", error);
+      throw new Error("Failed to update points");
     }
-    
-    // Create a new point history entry
-    const pointEntry: PointEntry = {
-      id: Date.now().toString(),
-      points,
-      reason,
-      date: new Date().toISOString()
-    };
-    
-    // Update the team points
-    teams[teamIndex] = {
-      ...teams[teamIndex],
-      points: teams[teamIndex].points + points
-    };
-    
-    // Add to point history
-    if (!pointHistory[teamId]) {
-      pointHistory[teamId] = [];
-    }
-    
-    pointHistory[teamId].push(pointEntry);
-    
-    return {
-      success: true,
-      team: teams[teamIndex],
-      pointHistory: pointHistory[teamId],
-      timestamp: new Date(),
-    };
   });

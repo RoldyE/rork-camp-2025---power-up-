@@ -43,66 +43,45 @@ export const useNominationStore = create<NominationState>()(
       fetchNominations: async (type, day) => {
         try {
           set({ isLoading: true });
-          const result = await trpcClient.nominations.getNominations.query({
-            type,
-            day
-          });
           
-          if (!result || !result.nominations) {
-            console.error("Invalid response from server:", result);
-            set({ isLoading: false });
-            return;
-          }
-          
-          // Update nominations based on type and day
-          set((state) => {
-            let updatedNominations = [...state.nominations];
+          try {
+            const result = await trpcClient.nominations.getNominations.query({
+              type,
+              day
+            });
             
-            if (type && day) {
-              // If both type and day are specified, merge nominations of that type and day
-              const existingNominations = updatedNominations.filter(
-                nom => !(nom.type === type && nom.day === day)
-              );
-              
-              // Add the fetched nominations
-              updatedNominations = [...existingNominations, ...result.nominations];
-            } else if (type) {
-              // If only type is specified, merge nominations of that type
-              const existingNominations = updatedNominations.filter(
-                nom => nom.type !== type
-              );
-              
-              // Add the fetched nominations
-              updatedNominations = [...existingNominations, ...result.nominations];
-            } else if (day) {
-              // If only day is specified, merge nominations of that day
-              const existingNominations = updatedNominations.filter(
-                nom => nom.day !== day
-              );
-              
-              // Add the fetched nominations
-              updatedNominations = [...existingNominations, ...result.nominations];
-            } else {
-              // If neither is specified, merge all nominations
+            if (!result || !result.nominations) {
+              console.error("Invalid response from server:", result);
+              set({ isLoading: false });
+              return;
+            }
+            
+            // Update nominations based on type and day
+            set((state) => {
               // Create a map of existing nominations for quick lookup
               const existingNominationsMap = new Map(
                 state.nominations.map(nom => [nom.id, nom])
               );
               
-              // Add new nominations from the result
+              // Add or update nominations from the result
               result.nominations.forEach(nom => {
                 existingNominationsMap.set(nom.id, nom);
               });
               
-              updatedNominations = Array.from(existingNominationsMap.values());
-            }
-            
-            return {
-              nominations: updatedNominations,
-              lastUpdated: new Date(result.timestamp),
-              isLoading: false
-            };
-          });
+              // Convert map back to array
+              const updatedNominations = Array.from(existingNominationsMap.values());
+              
+              return {
+                nominations: updatedNominations,
+                lastUpdated: new Date(result.timestamp),
+                isLoading: false
+              };
+            });
+          } catch (error) {
+            console.error("Error in TRPC call:", error);
+            // Don't update state on error, just set loading to false
+            set({ isLoading: false });
+          }
         } catch (error) {
           console.error("Error fetching nominations:", error);
           set({ isLoading: false });
@@ -112,41 +91,47 @@ export const useNominationStore = create<NominationState>()(
       fetchUserVotes: async (userId, nominationType, day) => {
         try {
           set({ isLoading: true });
-          const result = await trpcClient.nominations.getUserVotes.query({
-            userId,
-            nominationType,
-            day
-          });
           
-          if (!result || !result.votes) {
-            console.error("Invalid response from server:", result);
-            set({ isLoading: false });
-            return;
-          }
-          
-          // Update user votes in the store
-          set((state) => {
-            // Create a map of existing votes for quick lookup
-            const existingVotesMap = new Map(
-              state.userVotes.map(vote => [
-                `${vote.userId}-${vote.nominationType}-${vote.day}-${vote.timestamp}`,
-                vote
-              ])
-            );
-            
-            // Add new votes from the result
-            result.votes.forEach(vote => {
-              existingVotesMap.set(
-                `${vote.userId}-${vote.nominationType}-${vote.day}-${vote.timestamp}`,
-                vote
-              );
+          try {
+            const result = await trpcClient.nominations.getUserVotes.query({
+              userId,
+              nominationType,
+              day
             });
             
-            return {
-              userVotes: Array.from(existingVotesMap.values()),
-              isLoading: false
-            };
-          });
+            if (!result || !result.votes) {
+              console.error("Invalid response from server:", result);
+              set({ isLoading: false });
+              return;
+            }
+            
+            // Update user votes in the store
+            set((state) => {
+              // Create a map of existing votes for quick lookup
+              const existingVotesMap = new Map(
+                state.userVotes.map(vote => [
+                  `${vote.userId}-${vote.nominationType}-${vote.day}-${vote.timestamp}`,
+                  vote
+                ])
+              );
+              
+              // Add new votes from the result
+              result.votes.forEach(vote => {
+                existingVotesMap.set(
+                  `${vote.userId}-${vote.nominationType}-${vote.day}-${vote.timestamp}`,
+                  vote
+                );
+              });
+              
+              return {
+                userVotes: Array.from(existingVotesMap.values()),
+                isLoading: false
+              };
+            });
+          } catch (error) {
+            console.error("Error in TRPC call:", error);
+            set({ isLoading: false });
+          }
         } catch (error) {
           console.error("Error fetching user votes:", error);
           set({ isLoading: false });

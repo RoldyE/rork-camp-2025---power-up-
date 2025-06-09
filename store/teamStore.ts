@@ -16,41 +16,74 @@ interface TeamState {
   fetchTeams: () => Promise<void>;
 }
 
+// Initialize teams with zero points to avoid default values
+const zeroPointTeams = initialTeams.map(team => ({
+  ...team,
+  points: 0,
+  pointHistory: []
+}));
+
 export const useTeamStore = create<TeamState>()(
   persist(
     (set, get) => ({
-      teams: initialTeams,
+      teams: zeroPointTeams,
       isLoading: false,
       lastUpdated: null,
       
       fetchTeams: async () => {
         try {
           set({ isLoading: true });
-          const result = await trpcClient.teams.getTeams.query();
           
-          if (!result || !result.teams) {
-            console.error("Invalid response from server:", result);
-            set({ isLoading: false });
-            return;
-          }
-          
-          // Merge server data with local data to prevent data loss
-          set((state) => {
-            // If we have no local data or server data is newer, use server data
-            if (!state.lastUpdated || 
-                (result.timestamp && new Date(result.timestamp) > state.lastUpdated)) {
-              return { 
-                teams: result.teams,
-                lastUpdated: new Date(result.timestamp),
-                isLoading: false
-              };
+          try {
+            const result = await trpcClient.teams.getTeams.query();
+            
+            if (!result || !result.teams) {
+              console.error("Invalid response from server:", result);
+              set({ isLoading: false });
+              return;
             }
             
-            // Otherwise keep our local data
-            return { 
-              isLoading: false 
-            };
-          });
+            // Always merge server data with local data to prevent data loss
+            set((state) => {
+              // Create a map of existing teams for quick lookup
+              const existingTeamsMap = new Map(
+                state.teams.map(team => [team.id, team])
+              );
+              
+              // Add or update teams from the result
+              result.teams.forEach(team => {
+                const existingTeam = existingTeamsMap.get(team.id);
+                
+                // If the team exists locally and has a higher point count, keep the local data
+                // This prevents points from being lost during sync
+                if (existingTeam && existingTeam.points > team.points) {
+                  existingTeamsMap.set(team.id, {
+                    ...team,
+                    points: existingTeam.points,
+                    pointHistory: existingTeam.pointHistory || []
+                  });
+                } else {
+                  existingTeamsMap.set(team.id, {
+                    ...team,
+                    pointHistory: team.pointHistory || []
+                  });
+                }
+              });
+              
+              // Convert map back to array
+              const updatedTeams = Array.from(existingTeamsMap.values());
+              
+              return { 
+                teams: updatedTeams,
+                lastUpdated: new Date(result.timestamp || Date.now()),
+                isLoading: false
+              };
+            });
+          } catch (error) {
+            console.error("Error in TRPC call:", error);
+            // Don't update state on error, just set loading to false
+            set({ isLoading: false });
+          }
         } catch (error) {
           console.error("Error fetching teams:", error);
           set({ isLoading: false });
@@ -102,7 +135,7 @@ export const useTeamStore = create<TeamState>()(
                   team.id === teamId
                     ? { 
                         ...team,
-                        points: result.team.points,
+                        points: Math.max(team.points, result.team.points), // Keep the higher point count
                         pointHistory: result.pointHistory || team.pointHistory
                       }
                     : team

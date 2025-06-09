@@ -10,22 +10,27 @@ export default publicProcedure
     })
   )
   .query(({ input }) => {
-    let filteredNominations = [...nominations];
-    
-    if (input.type) {
-      filteredNominations = filteredNominations.filter(
-        (nom) => nom.type === input.type
-      );
+    try {
+      let filteredNominations = [...nominations];
+      
+      if (input.type) {
+        filteredNominations = filteredNominations.filter(
+          (nom) => nom.type === input.type
+        );
+      }
+      
+      if (input.day) {
+        filteredNominations = filteredNominations.filter(
+          (nom) => nom.day === input.day
+        );
+      }
+      
+      return {
+        nominations: filteredNominations,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      console.error("Error in getNominations procedure:", error);
+      throw new Error("Failed to get nominations");
     }
-    
-    if (input.day) {
-      filteredNominations = filteredNominations.filter(
-        (nom) => nom.day === input.day
-      );
-    }
-    
-    return {
-      nominations: filteredNominations,
-      timestamp: new Date(),
-    };
   });
