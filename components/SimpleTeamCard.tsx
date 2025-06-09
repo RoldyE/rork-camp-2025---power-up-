@@ -50,11 +50,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
-    marginBottom: 12,
-    height: 80,
+    marginBottom: 8,
+    height: 70,
   },
   colorBar: {
-    width: 8,
+    width: 6,
   },
   contentContainer: {
     flex: 1,
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     color: colors.textLight,
   },
   pointsValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: colors.primary,
   },

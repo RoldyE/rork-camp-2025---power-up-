@@ -27,7 +27,11 @@ export const useAuthStore = create<AuthState>()(
       login: (profile) =>
         set({
           isAuthenticated: true,
-          userProfile: profile,
+          userProfile: {
+            ...profile,
+            // Set admin status based on username
+            isAdmin: profile.name.toLowerCase() === 'admin'
+          },
         }),
       logout: () =>
         set({

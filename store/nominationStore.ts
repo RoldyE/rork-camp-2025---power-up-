@@ -264,7 +264,7 @@ export const useNominationStore = create<NominationState>()(
           supabase
             .from('user_votes')
             .delete()
-            .gte('id', 0)
+            .gte('id', '0')
             .then(({ error }) => {
               if (error) console.error('Error resetting user votes in Supabase:', error);
             });
@@ -306,23 +306,6 @@ export const useNominationStore = create<NominationState>()(
             }));
             
             set({ nominations: mappedNominations });
-          } else {
-            // Initialize with local data if none in Supabase
-            initialNominations.forEach(nom => {
-              supabase
-                .from('nominations')
-                .insert([{
-                  id: nom.id,
-                  camperid: nom.camperId,
-                  reason: nom.reason,
-                  votes: nom.votes,
-                  day: nom.day,
-                  type: nom.type
-                }])
-                .then(({ error }) => {
-                  if (error) console.error('Error initializing nominations in Supabase:', error);
-                });
-            });
           }
           
           if (votesData && votesData.length > 0) {

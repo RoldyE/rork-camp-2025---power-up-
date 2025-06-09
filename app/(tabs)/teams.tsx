@@ -47,6 +47,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.text,
     marginBottom: 12,
+    marginTop: 8,
   },
   content: {
     paddingBottom: 100,

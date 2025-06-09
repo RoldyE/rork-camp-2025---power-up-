@@ -9,7 +9,7 @@ interface TeamState {
   teams: Team[];
   addPoints: (teamId: string, points: number, reason: string) => void;
   resetPoints: () => void;
-  resetTeamPoints: (teamId: string) => void; // New function to reset a single team's points
+  resetTeamPoints: (teamId: string) => void;
   getPointHistory: (teamId: string) => PointEntry[];
   syncWithSupabase: () => Promise<void>;
 }
@@ -104,7 +104,7 @@ export const useTeamStore = create<TeamState>()(
             supabase
               .from('point_history')
               .delete()
-              .gte('id', 0)
+              .gte('id', '0')
               .then(({ error }) => {
                 if (error) console.error('Error clearing point history in Supabase:', error);
               });
@@ -117,7 +117,7 @@ export const useTeamStore = create<TeamState>()(
           };
         }),
         
-      // New function to reset a single team's points
+      // Reset only a specific team's points
       resetTeamPoints: (teamId) =>
         set((state) => {
           const updatedTeams = state.teams.map((team) => 
@@ -198,21 +198,6 @@ export const useTeamStore = create<TeamState>()(
             });
             
             set({ teams: teamsWithHistory });
-          } else {
-            // If no teams in Supabase, initialize with local data
-            initialTeams.forEach(team => {
-              supabase
-                .from('teams')
-                .insert([{
-                  id: team.id,
-                  name: team.name,
-                  color: team.color,
-                  points: team.points
-                }])
-                .then(({ error }) => {
-                  if (error) console.error('Error initializing teams in Supabase:', error);
-                });
-            });
           }
         } catch (error) {
           console.error('Failed to sync with Supabase:', error);

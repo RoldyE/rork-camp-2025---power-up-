@@ -9,11 +9,13 @@ import { PointHistoryCard } from "@/components/PointHistoryCard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabaseClient";
 import { RotateCcw } from "lucide-react-native";
+import { useAuthStore } from "@/store/authStore";
 
 export default function TeamDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { teams, addPoints, getPointHistory, resetTeamPoints } = useTeamStore();
+  const { userProfile } = useAuthStore();
   const [pointsToAdd, setPointsToAdd] = useState("");
   const [reason, setReason] = useState("");
   const [activeTab, setActiveTab] = useState<"members" | "history">("members");
@@ -21,6 +23,9 @@ export default function TeamDetailsScreen() {
   
   const team = teams.find((t) => t.id === id);
   const pointHistory = getPointHistory(id || "");
+  
+  // Check if user is admin
+  const isAdmin = userProfile?.isAdmin || false;
   
   useEffect(() => {
     // Get team members from local data first
@@ -57,6 +62,11 @@ export default function TeamDetailsScreen() {
   }
   
   const handleAddPoints = async () => {
+    if (!isAdmin) {
+      Alert.alert("Access Denied", "Only admins can add points");
+      return;
+    }
+    
     const points = parseInt(pointsToAdd);
     if (isNaN(points)) {
       Alert.alert("Invalid Input", "Please enter a valid number");
@@ -71,77 +81,31 @@ export default function TeamDetailsScreen() {
     // Add points locally
     addPoints(team.id, points, reason.trim());
     
-    // Try to update in Supabase
-    try {
-      const { error } = await supabase
-        .from('point_history')
-        .insert([{
-          teamid: team.id,
-          points: points,
-          reason: reason.trim(),
-          date: new Date().toISOString()
-        }]);
-        
-      if (error) {
-        console.error('Error adding points to Supabase:', error);
-      }
-      
-      // Also update team points in Supabase
-      const { error: teamError } = await supabase
-        .from('teams')
-        .update({ points: team.points + points })
-        .eq('id', team.id);
-        
-      if (teamError) {
-        console.error('Error updating team points in Supabase:', teamError);
-      }
-    } catch (error) {
-      console.error('Failed to update points in Supabase:', error);
-    }
-    
     setPointsToAdd("");
     setReason("");
     Alert.alert("Points Added", `${points} points added to ${team.name}`);
   };
 
   const handleQuickAddPoints = async (points: number) => {
+    if (!isAdmin) {
+      Alert.alert("Access Denied", "Only admins can add points");
+      return;
+    }
+    
     const defaultReason = `Quick add ${points} points`;
     
     // Add points locally
     addPoints(team.id, points, defaultReason);
     
-    // Try to update in Supabase
-    try {
-      const { error } = await supabase
-        .from('point_history')
-        .insert([{
-          teamid: team.id,
-          points: points,
-          reason: defaultReason,
-          date: new Date().toISOString()
-        }]);
-        
-      if (error) {
-        console.error('Error adding points to Supabase:', error);
-      }
-      
-      // Also update team points in Supabase
-      const { error: teamError } = await supabase
-        .from('teams')
-        .update({ points: team.points + points })
-        .eq('id', team.id);
-        
-      if (teamError) {
-        console.error('Error updating team points in Supabase:', teamError);
-      }
-    } catch (error) {
-      console.error('Failed to update points in Supabase:', error);
-    }
-    
     Alert.alert("Success", `${points} points added to ${team.name}`);
   };
 
   const handleResetPoints = () => {
+    if (!isAdmin) {
+      Alert.alert("Access Denied", "Only admins can reset points");
+      return;
+    }
+    
     Alert.alert(
       "Reset Team Points",
       `Are you sure you want to reset ${team.name}'s points to zero?`,
@@ -179,60 +143,64 @@ export default function TeamDetailsScreen() {
         </View>
       </View>
       
-      <View style={styles.quickPointsContainer}>
-        <Text style={styles.quickPointsLabel}>Quick Add Points:</Text>
-        <View style={styles.quickButtonsRow}>
-          <Pressable 
-            style={[styles.quickButton, { backgroundColor: team.color + "80" }]} 
-            onPress={() => handleQuickAddPoints(1)}
-          >
-            <Text style={styles.quickButtonText}>+1</Text>
-          </Pressable>
-          <Pressable 
-            style={[styles.quickButton, { backgroundColor: team.color + "80" }]} 
-            onPress={() => handleQuickAddPoints(2)}
-          >
-            <Text style={styles.quickButtonText}>+2</Text>
-          </Pressable>
-          <Pressable 
-            style={[styles.quickButton, { backgroundColor: team.color + "80" }]} 
-            onPress={() => handleQuickAddPoints(5)}
-          >
-            <Text style={styles.quickButtonText}>+5</Text>
-          </Pressable>
-          <Pressable 
-            style={[styles.quickButton, { backgroundColor: team.color + "80" }]} 
-            onPress={() => handleQuickAddPoints(10)}
-          >
-            <Text style={styles.quickButtonText}>+10</Text>
-          </Pressable>
-        </View>
-      </View>
-      
-      <View style={styles.addPointsContainer}>
-        <Text style={styles.sectionTitle}>Custom Points</Text>
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.pointsInput}
-            value={pointsToAdd}
-            onChangeText={setPointsToAdd}
-            placeholder="Points"
-            keyboardType="number-pad"
-          />
-          <TextInput
-            style={styles.reasonInput}
-            value={reason}
-            onChangeText={setReason}
-            placeholder="Reason for points"
-          />
-        </View>
-        <Pressable 
-          style={[styles.addButton, { backgroundColor: team.color }]}
-          onPress={handleAddPoints}
-        >
-          <Text style={styles.addButtonText}>Add Points</Text>
-        </Pressable>
-      </View>
+      {isAdmin && (
+        <>
+          <View style={styles.quickPointsContainer}>
+            <Text style={styles.quickPointsLabel}>Quick Add Points:</Text>
+            <View style={styles.quickButtonsRow}>
+              <Pressable 
+                style={[styles.quickButton, { backgroundColor: team.color + "80" }]} 
+                onPress={() => handleQuickAddPoints(1)}
+              >
+                <Text style={styles.quickButtonText}>+1</Text>
+              </Pressable>
+              <Pressable 
+                style={[styles.quickButton, { backgroundColor: team.color + "80" }]} 
+                onPress={() => handleQuickAddPoints(2)}
+              >
+                <Text style={styles.quickButtonText}>+2</Text>
+              </Pressable>
+              <Pressable 
+                style={[styles.quickButton, { backgroundColor: team.color + "80" }]} 
+                onPress={() => handleQuickAddPoints(5)}
+              >
+                <Text style={styles.quickButtonText}>+5</Text>
+              </Pressable>
+              <Pressable 
+                style={[styles.quickButton, { backgroundColor: team.color + "80" }]} 
+                onPress={() => handleQuickAddPoints(10)}
+              >
+                <Text style={styles.quickButtonText}>+10</Text>
+              </Pressable>
+            </View>
+          </View>
+          
+          <View style={styles.addPointsContainer}>
+            <Text style={styles.sectionTitle}>Custom Points</Text>
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.pointsInput}
+                value={pointsToAdd}
+                onChangeText={setPointsToAdd}
+                placeholder="Points"
+                keyboardType="number-pad"
+              />
+              <TextInput
+                style={styles.reasonInput}
+                value={reason}
+                onChangeText={setReason}
+                placeholder="Reason for points"
+              />
+            </View>
+            <Pressable 
+              style={[styles.addButton, { backgroundColor: team.color }]}
+              onPress={handleAddPoints}
+            >
+              <Text style={styles.addButtonText}>Add Points</Text>
+            </Pressable>
+          </View>
+        </>
+      )}
       
       <View style={styles.tabContainer}>
         <Pressable
@@ -298,13 +266,15 @@ export default function TeamDetailsScreen() {
         />
       )}
 
-      {/* Reset button for this team only */}
-      <Pressable 
-        style={styles.resetButton}
-        onPress={handleResetPoints}
-      >
-        <RotateCcw size={16} color="white" />
-      </Pressable>
+      {/* Reset button for this team only - only show for admins */}
+      {isAdmin && (
+        <Pressable 
+          style={styles.resetButton}
+          onPress={handleResetPoints}
+        >
+          <RotateCcw size={16} color="white" />
+        </Pressable>
+      )}
     </SafeAreaView>
   );
 }
