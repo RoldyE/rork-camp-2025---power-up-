@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, Alert, FlatList, ActivityIndicator, AppState } from "react-native";
+import { View, Text, StyleSheet, Pressable, TextInput, Alert, FlatList, ScrollView } from "react-native";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { useTeamStore } from "@/store/teamStore";
@@ -7,45 +7,46 @@ import { campers } from "@/mocks/campers";
 import { CamperCard } from "@/components/CamperCard";
 import { PointHistoryCard } from "@/components/PointHistoryCard";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from "@/lib/supabaseClient";
 import { RotateCcw } from "lucide-react-native";
-import { usePolling } from "@/hooks/usePolling";
 
 export default function TeamDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { teams, addPoints, getPointHistory, resetTeamPoints, fetchTeams, isLoading } = useTeamStore();
+  const { teams, addPoints, getPointHistory, resetTeamPoints } = useTeamStore();
   const [pointsToAdd, setPointsToAdd] = useState("");
   const [reason, setReason] = useState("");
   const [activeTab, setActiveTab] = useState<"members" | "history">("members");
-  
-  // Initial fetch
-  useEffect(() => {
-    fetchTeams();
-  }, []);
-  
-  // Set up polling to keep team data fresh
-  const { poll } = usePolling(fetchTeams, { 
-    interval: 300000, // Poll every 5 minutes
-    immediate: false, // Don't poll immediately on mount (we already fetch in useEffect)
-    enabled: false // Disable automatic polling
-  });
-  
-  // Manual poll when screen becomes active
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'active') {
-        poll();
-      }
-    });
-    
-    return () => {
-      subscription.remove();
-    };
-  }, [poll]);
+  const [teamCampers, setTeamCampers] = useState<any[]>([]);
   
   const team = teams.find((t) => t.id === id);
   const pointHistory = getPointHistory(id || "");
-  const teamCampers = campers.filter((c) => c.teamId === id);
+  
+  useEffect(() => {
+    // Get team members from local data first
+    const localCampers = campers.filter((c) => c.teamId === id);
+    setTeamCampers(localCampers);
+    
+    // Then try to fetch from Supabase if available
+    const fetchTeamMembers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('campers')
+          .select('*')
+          .eq('teamid', id);
+          
+        if (error) {
+          console.error('Error fetching team members:', error);
+        } else if (data && data.length > 0) {
+          setTeamCampers(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch team members:', error);
+      }
+    };
+    
+    fetchTeamMembers();
+  }, [id]);
   
   if (!team) {
     return (
@@ -67,27 +68,77 @@ export default function TeamDetailsScreen() {
       return;
     }
     
-    // Add points
-    await addPoints(team.id, points, reason.trim());
+    // Add points locally
+    addPoints(team.id, points, reason.trim());
+    
+    // Try to update in Supabase
+    try {
+      const { error } = await supabase
+        .from('point_history')
+        .insert([{
+          teamid: team.id,
+          points: points,
+          reason: reason.trim(),
+          date: new Date().toISOString()
+        }]);
+        
+      if (error) {
+        console.error('Error adding points to Supabase:', error);
+      }
+      
+      // Also update team points in Supabase
+      const { error: teamError } = await supabase
+        .from('teams')
+        .update({ points: team.points + points })
+        .eq('id', team.id);
+        
+      if (teamError) {
+        console.error('Error updating team points in Supabase:', teamError);
+      }
+    } catch (error) {
+      console.error('Failed to update points in Supabase:', error);
+    }
     
     setPointsToAdd("");
     setReason("");
     Alert.alert("Points Added", `${points} points added to ${team.name}`);
-    
-    // Refresh data after adding points
-    await fetchTeams();
   };
 
   const handleQuickAddPoints = async (points: number) => {
     const defaultReason = `Quick add ${points} points`;
     
-    // Add points
-    await addPoints(team.id, points, defaultReason);
+    // Add points locally
+    addPoints(team.id, points, defaultReason);
+    
+    // Try to update in Supabase
+    try {
+      const { error } = await supabase
+        .from('point_history')
+        .insert([{
+          teamid: team.id,
+          points: points,
+          reason: defaultReason,
+          date: new Date().toISOString()
+        }]);
+        
+      if (error) {
+        console.error('Error adding points to Supabase:', error);
+      }
+      
+      // Also update team points in Supabase
+      const { error: teamError } = await supabase
+        .from('teams')
+        .update({ points: team.points + points })
+        .eq('id', team.id);
+        
+      if (teamError) {
+        console.error('Error updating team points in Supabase:', teamError);
+      }
+    } catch (error) {
+      console.error('Failed to update points in Supabase:', error);
+    }
     
     Alert.alert("Success", `${points} points added to ${team.name}`);
-    
-    // Refresh data after adding points
-    await fetchTeams();
   };
 
   const handleResetPoints = () => {
@@ -98,13 +149,10 @@ export default function TeamDetailsScreen() {
         { text: "Cancel", style: "cancel" },
         { 
           text: "Reset", 
-          onPress: async () => {
+          onPress: () => {
             // Reset points for this team only
-            await resetTeamPoints(team.id);
+            resetTeamPoints(team.id);
             Alert.alert("Success", `${team.name}'s points have been reset to zero.`);
-            
-            // Refresh data after reset
-            await fetchTeams();
           },
           style: "destructive" 
         }
@@ -122,12 +170,6 @@ export default function TeamDetailsScreen() {
           },
         }} 
       />
-      
-      {isLoading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      )}
       
       <View style={[styles.header, { backgroundColor: team.color + "20" }]}>
         <Text style={styles.teamName}>{team.name}</Text>
@@ -271,17 +313,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  loadingContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-    zIndex: 10,
   },
   header: {
     padding: 20,

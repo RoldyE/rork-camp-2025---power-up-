@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Nomination, NominationType } from "@/types";
 import { nominations as initialNominations } from "@/mocks/nominations";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabaseClient";
 
 interface UserVote {
   userId: string;
@@ -15,14 +15,10 @@ interface UserVote {
 interface NominationState {
   nominations: Nomination[];
   userVotes: UserVote[];
-  isLoading: boolean;
-  lastUpdated: Date | null;
-  addNomination: (nomination: Omit<Nomination, "id" | "votes">) => Promise<void>;
-  voteForNomination: (nominationId: string, userId: string, nominationType: NominationType, day: string) => Promise<void>;
+  addNomination: (nomination: Omit<Nomination, "id" | "votes">) => void;
+  voteForNomination: (nominationId: string, userId: string) => void;
   deleteNomination: (nominationId: string) => void;
-  resetVotes: (day: string, type: NominationType) => Promise<void>;
-  fetchNominations: (type?: NominationType, day?: string) => Promise<void>;
-  fetchUserVotes: (userId: string, nominationType?: NominationType, day?: string) => Promise<void>;
+  resetVotes: (day: string, type: NominationType) => void;
   getCurrentDayNominations: (day: string, type: NominationType) => Nomination[];
   getWeeklyNominations: (type: NominationType) => Nomination[];
   getTopNominationsByType: (type: NominationType, limit?: number) => Nomination[];
@@ -30,6 +26,7 @@ interface NominationState {
   getUserVoteCount: (userId: string, nominationType: NominationType, day: string) => number;
   recordUserVote: (userId: string, nominationType: NominationType, day: string) => void;
   resetUserVotes: () => void;
+  syncWithSupabase: () => Promise<void>;
 }
 
 export const useNominationStore = create<NominationState>()(
@@ -37,268 +34,136 @@ export const useNominationStore = create<NominationState>()(
     (set, get) => ({
       nominations: initialNominations,
       userVotes: [],
-      isLoading: false,
-      lastUpdated: null,
-      
-      fetchNominations: async (type, day) => {
-        try {
-          set({ isLoading: true });
-          
-          // Build the query to fetch nominations from Supabase
-          let query = supabase.from('nominations').select('*');
-          
-          if (type) {
-            query = query.eq('category', type);
-          }
-          
-          if (day) {
-            query = query.eq('day', day);
-          }
-          
-          const { data, error } = await query;
-          
-          if (error) {
-            console.error("Error fetching nominations from Supabase:", error);
-            set({ isLoading: false });
-            return;
-          }
-          
-          if (data) {
-            set({
-              nominations: data.map(nom => ({
-                id: nom.nomination_id,
-                camperId: nom.camper_id,
-                reason: nom.reason || "",
-                day: nom.day,
-                type: nom.category as NominationType,
-                votes: nom.votes || 0
-              })),
-              lastUpdated: new Date(),
-              isLoading: false
-            });
-          } else {
-            set({ isLoading: false });
-          }
-        } catch (error) {
-          console.error("Error fetching nominations:", error);
-          set({ isLoading: false });
-        }
-      },
-      
-      fetchUserVotes: async (userId, nominationType, day) => {
-        try {
-          set({ isLoading: true });
-          
-          // Build the query to fetch user votes from Supabase
-          let query = supabase.from('user_votes').select('*').eq('user_id', userId);
-          
-          if (nominationType) {
-            query = query.eq('nomination_type', nominationType);
-          }
-          
-          if (day) {
-            query = query.eq('day', day);
-          }
-          
-          const { data, error } = await query;
-          
-          if (error) {
-            console.error("Error fetching user votes from Supabase:", error);
-            set({ isLoading: false });
-            return;
-          }
-          
-          if (data) {
-            set({
-              userVotes: data.map(vote => ({
-                userId: vote.user_id,
-                nominationType: vote.nomination_type as NominationType,
-                day: vote.day,
-                timestamp: vote.timestamp
-              })),
-              isLoading: false
-            });
-          } else {
-            set({ isLoading: false });
-          }
-        } catch (error) {
-          console.error("Error fetching user votes:", error);
-          set({ isLoading: false });
-        }
-      },
       
       addNomination: async (nomination) => {
+        const newId = Date.now().toString();
+        const newNomination = {
+          ...nomination,
+          id: newId,
+          votes: 0,
+        };
+        
+        set((state) => ({
+          nominations: [
+            ...state.nominations,
+            newNomination,
+          ],
+        }));
+        
+        // Try to add to Supabase
         try {
-          set({ isLoading: true });
-          
-          // Add nomination to Supabase
-          const { data, error } = await supabase
+          supabase
             .from('nominations')
             .insert([{
-              camper_id: nomination.camperId,
-              camper_name: nomination.camperName || "Unknown",
+              id: newId,
+              camperid: nomination.camperId,
               reason: nomination.reason,
+              votes: 0,
               day: nomination.day,
-              category: nomination.type,
-              votes: 0
+              type: nomination.type,
+              created_at: new Date().toISOString()
             }])
-            .select();
-          
-          if (error) {
-            console.error("Error adding nomination to Supabase:", error);
-            set({ isLoading: false });
-            return;
-          }
-          
-          if (data && data.length > 0) {
-            const newNomination = {
-              id: data[0].nomination_id,
-              camperId: data[0].camper_id,
-              camperName: data[0].camper_name,
-              reason: data[0].reason || "",
-              day: data[0].day,
-              type: data[0].category as NominationType,
-              votes: data[0].votes || 0
-            };
-            
-            set((state) => ({
-              nominations: [...state.nominations, newNomination],
-              lastUpdated: new Date(),
-            }));
-          }
-          
-          set({ isLoading: false });
+            .then(({ error }) => {
+              if (error) console.error('Error adding nomination to Supabase:', error);
+            });
         } catch (error) {
-          console.error("Error adding nomination:", error);
-          set({ isLoading: false });
+          console.error('Failed to add nomination to Supabase:', error);
         }
       },
         
-      voteForNomination: async (nominationId, userId, nominationType, day) => {
+      voteForNomination: async (nominationId, userId) => {
+        // Update locally
+        set((state) => ({
+          nominations: state.nominations.map((nom) =>
+            nom.id === nominationId
+              ? { ...nom, votes: nom.votes + 1 }
+              : nom
+          ),
+        }));
+        
+        // Try to update in Supabase
         try {
-          set({ isLoading: true });
+          // First get the current nomination
+          const nomination = get().nominations.find(nom => nom.id === nominationId);
           
-          // Update vote count in Supabase
-          const { data: nominationData, error } = await supabase
-            .from('nominations')
-            .select('votes')
-            .eq('nomination_id', nominationId)
-            .single();
-          
-          if (error) {
-            console.error("Error fetching nomination votes from Supabase:", error);
-            set({ isLoading: false });
-            return;
+          if (nomination) {
+            supabase
+              .from('nominations')
+              .update({ votes: nomination.votes + 1 })
+              .eq('id', nominationId)
+              .then(({ error }) => {
+                if (error) console.error('Error updating votes in Supabase:', error);
+              });
+            
+            // Record the vote
+            const voteId = Date.now().toString();
+            supabase
+              .from('user_votes')
+              .insert([{
+                id: voteId,
+                userid: userId,
+                nominationid: nominationId,
+                nominationtype: nomination.type,
+                day: nomination.day,
+                timestamp: new Date().toISOString()
+              }])
+              .then(({ error }) => {
+                if (error) console.error('Error recording vote in Supabase:', error);
+              });
           }
-          
-          const newVotes = (nominationData?.votes || 0) + 1;
-          
-          const { error: updateError } = await supabase
-            .from('nominations')
-            .update({ votes: newVotes })
-            .eq('nomination_id', nominationId);
-          
-          if (updateError) {
-            console.error("Error updating nomination votes in Supabase:", updateError);
-            set({ isLoading: false });
-            return;
-          }
-          
-          // Record user vote in Supabase
-          const { error: voteError } = await supabase
-            .from('user_votes')
-            .insert([{
-              user_id: userId,
-              nomination_id: nominationId,
-              nomination_type: nominationType,
-              day: day,
-              timestamp: new Date().toISOString()
-            }]);
-          
-          if (voteError) {
-            console.error("Error recording user vote in Supabase:", voteError);
-            set({ isLoading: false });
-            return;
-          }
-          
-          // Update local state
-          set((state) => ({
-            nominations: state.nominations.map((nom) =>
-              nom.id === nominationId
-                ? { ...nom, votes: nom.votes + 1 }
-                : nom
-            ),
-            userVotes: [
-              ...state.userVotes,
-              {
-                userId,
-                nominationType,
-                day,
-                timestamp: new Date().toISOString(),
-              },
-            ],
-            lastUpdated: new Date(),
-          }));
-          
-          set({ isLoading: false });
         } catch (error) {
-          console.error("Error voting for nomination:", error);
-          set({ isLoading: false });
+          console.error('Failed to update votes in Supabase:', error);
         }
       },
         
-      deleteNomination: (nominationId) => {
+      deleteNomination: async (nominationId) => {
         set((state) => ({
           nominations: state.nominations.filter((nom) => nom.id !== nominationId),
-          lastUpdated: new Date(),
         }));
+        
+        // Try to delete from Supabase
+        try {
+          supabase
+            .from('nominations')
+            .delete()
+            .eq('id', nominationId)
+            .then(({ error }) => {
+              if (error) console.error('Error deleting nomination from Supabase:', error);
+            });
+        } catch (error) {
+          console.error('Failed to delete nomination from Supabase:', error);
+        }
       },
         
       resetVotes: async (day, type) => {
+        set((state) => ({
+          nominations: state.nominations.map((nom) =>
+            nom.day === day && nom.type === type ? { ...nom, votes: 0 } : nom
+          ),
+        }));
+        
+        // Try to reset votes in Supabase
         try {
-          set({ isLoading: true });
-          
-          // Reset votes in Supabase
-          const { error } = await supabase
+          supabase
             .from('nominations')
             .update({ votes: 0 })
             .eq('day', day)
-            .eq('category', type);
+            .eq('type', type)
+            .then(({ error }) => {
+              if (error) console.error('Error resetting votes in Supabase:', error);
+            });
           
-          if (error) {
-            console.error("Error resetting votes in Supabase:", error);
-            set({ isLoading: false });
-            return;
-          }
-          
-          // Delete user votes for this day and type from Supabase
-          const { error: voteError } = await supabase
+          // Also clear user votes for this type and day
+          supabase
             .from('user_votes')
             .delete()
             .eq('day', day)
-            .eq('nomination_type', type);
-          
-          if (voteError) {
-            console.error("Error resetting user votes in Supabase:", voteError);
-            set({ isLoading: false });
-            return;
-          }
-          
-          // Update local state
-          set((state) => ({
-            nominations: state.nominations.map((nom) =>
-              nom.day === day && nom.type === type ? { ...nom, votes: 0 } : nom
-            ),
-            userVotes: state.userVotes.filter(
-              vote => !(vote.day === day && vote.nominationType === type)
-            ),
-            lastUpdated: new Date(),
-          }));
-          
-          set({ isLoading: false });
+            .eq('nominationtype', type)
+            .then(({ error }) => {
+              if (error) console.error('Error clearing user votes in Supabase:', error);
+            });
         } catch (error) {
-          console.error("Error resetting votes:", error);
-          set({ isLoading: false });
+          console.error('Failed to reset votes in Supabase:', error);
         }
       },
         
@@ -320,6 +185,7 @@ export const useNominationStore = create<NominationState>()(
       hasUserVoted: (userId, nominationType) => {
         const today = new Date().toLocaleDateString();
         
+        // For daily nominations, check if user has voted 2 times for the current day
         if (nominationType === "daily") {
           const dailyVotes = get().userVotes.filter(
             vote => vote.userId === userId && 
@@ -329,6 +195,7 @@ export const useNominationStore = create<NominationState>()(
           return dailyVotes.length >= 2;
         }
         
+        // For other nomination types, check if user has voted 2 times total
         const typeVotes = get().userVotes.filter(
           vote => vote.userId === userId && vote.nominationType === nominationType
         );
@@ -352,7 +219,7 @@ export const useNominationStore = create<NominationState>()(
         ).length;
       },
       
-      recordUserVote: (userId, nominationType, day) => {
+      recordUserVote: async (userId, nominationType, day) => {
         const newVote = {
           userId,
           nominationType,
@@ -365,25 +232,118 @@ export const useNominationStore = create<NominationState>()(
             ...state.userVotes,
             newVote,
           ],
-          lastUpdated: new Date(),
         }));
+        
+        // Try to record in Supabase
+        try {
+          const voteId = Date.now().toString();
+          supabase
+            .from('user_votes')
+            .insert([{
+              id: voteId,
+              userid: userId,
+              nominationtype: nominationType,
+              day: day,
+              timestamp: new Date().toISOString()
+            }])
+            .then(({ error }) => {
+              if (error) console.error('Error recording user vote in Supabase:', error);
+            });
+        } catch (error) {
+          console.error('Failed to record user vote in Supabase:', error);
+        }
       },
         
-      resetUserVotes: () => {
+      resetUserVotes: async () => {
         set({
           userVotes: [],
-          lastUpdated: new Date(),
         });
+        
+        // Try to reset in Supabase
+        try {
+          supabase
+            .from('user_votes')
+            .delete()
+            .gte('id', 0)
+            .then(({ error }) => {
+              if (error) console.error('Error resetting user votes in Supabase:', error);
+            });
+        } catch (error) {
+          console.error('Failed to reset user votes in Supabase:', error);
+        }
+      },
+      
+      syncWithSupabase: async () => {
+        try {
+          // Fetch nominations
+          const { data: nominationsData, error: nominationsError } = await supabase
+            .from('nominations')
+            .select('*');
+            
+          if (nominationsError) {
+            console.error('Error fetching nominations from Supabase:', nominationsError);
+            return;
+          }
+          
+          // Fetch user votes
+          const { data: votesData, error: votesError } = await supabase
+            .from('user_votes')
+            .select('*');
+            
+          if (votesError) {
+            console.error('Error fetching user votes from Supabase:', votesError);
+          }
+          
+          if (nominationsData && nominationsData.length > 0) {
+            // Map the data to match our app's structure
+            const mappedNominations = nominationsData.map(nom => ({
+              id: nom.id.toString(),
+              camperId: nom.camperid,
+              reason: nom.reason,
+              votes: nom.votes,
+              day: nom.day,
+              type: nom.type
+            }));
+            
+            set({ nominations: mappedNominations });
+          } else {
+            // Initialize with local data if none in Supabase
+            initialNominations.forEach(nom => {
+              supabase
+                .from('nominations')
+                .insert([{
+                  id: nom.id,
+                  camperid: nom.camperId,
+                  reason: nom.reason,
+                  votes: nom.votes,
+                  day: nom.day,
+                  type: nom.type
+                }])
+                .then(({ error }) => {
+                  if (error) console.error('Error initializing nominations in Supabase:', error);
+                });
+            });
+          }
+          
+          if (votesData && votesData.length > 0) {
+            // Map the data to match our app's structure
+            const mappedVotes = votesData.map(vote => ({
+              userId: vote.userid,
+              nominationType: vote.nominationtype,
+              day: vote.day,
+              timestamp: vote.timestamp
+            }));
+            
+            set({ userVotes: mappedVotes });
+          }
+        } catch (error) {
+          console.error('Failed to sync with Supabase:', error);
+        }
       }
     }),
     {
       name: "nomination-storage",
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({
-        nominations: state.nominations,
-        userVotes: state.userVotes,
-        lastUpdated: state.lastUpdated
-      }),
     }
   )
 );

@@ -3,221 +3,225 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Team, PointEntry } from "@/types";
 import { teams as initialTeams } from "@/mocks/teams";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabaseClient";
 
 interface TeamState {
   teams: Team[];
-  isLoading: boolean;
-  lastUpdated: Date | null;
-  addPoints: (teamId: string, points: number, reason: string) => Promise<void>;
-  resetPoints: () => Promise<void>;
-  resetTeamPoints: (teamId: string) => Promise<void>;
+  addPoints: (teamId: string, points: number, reason: string) => void;
+  resetPoints: () => void;
+  resetTeamPoints: (teamId: string) => void; // New function to reset a single team's points
   getPointHistory: (teamId: string) => PointEntry[];
-  fetchTeams: () => Promise<void>;
+  syncWithSupabase: () => Promise<void>;
 }
-
-// Initialize teams with zero points to avoid default values
-const zeroPointTeams = initialTeams.map(team => ({
-  ...team,
-  points: 0,
-  pointHistory: []
-}));
 
 export const useTeamStore = create<TeamState>()(
   persist(
     (set, get) => ({
-      teams: zeroPointTeams,
-      isLoading: false,
-      lastUpdated: null,
+      teams: initialTeams.map(team => ({
+        ...team,
+        pointHistory: []
+      })),
       
-      fetchTeams: async () => {
-        try {
-          set({ isLoading: true });
+      addPoints: (teamId, points, reason) =>
+        set((state) => {
+          const updatedTeams = state.teams.map((team) =>
+            team.id === teamId
+              ? { 
+                  ...team, 
+                  points: team.points + points,
+                  pointHistory: [
+                    ...(team.pointHistory || []),
+                    {
+                      id: Date.now().toString(),
+                      points,
+                      reason,
+                      date: new Date().toISOString()
+                    }
+                  ]
+                }
+              : team
+          );
           
-          // Fetch teams from Supabase
-          const { data, error } = await supabase
-            .from('teams')
-            .select('*');
-          
-          if (error) {
-            console.error("Error fetching teams from Supabase:", error);
-            set({ isLoading: false });
-            return;
+          // Try to update in Supabase
+          try {
+            // Add to point history
+            const pointId = Date.now().toString();
+            supabase
+              .from('point_history')
+              .insert([{
+                id: pointId,
+                teamid: teamId,
+                points: points,
+                reason: reason,
+                date: new Date().toISOString()
+              }])
+              .then(({ error }) => {
+                if (error) console.error('Error adding points to Supabase:', error);
+              });
+              
+            // Update team points
+            const team = updatedTeams.find(t => t.id === teamId);
+            if (team) {
+              supabase
+                .from('teams')
+                .update({ points: team.points })
+                .eq('id', teamId)
+                .then(({ error }) => {
+                  if (error) console.error('Error updating team points in Supabase:', error);
+                });
+            }
+          } catch (error) {
+            console.error('Failed to update points in Supabase:', error);
           }
           
-          if (data) {
-            // Fetch points for each team
-            const teamsWithPoints = await Promise.all(data.map(async (team) => {
-              const { data: pointsData, error: pointsError } = await supabase
-                .from('points')
-                .select('points, reason, updated_at')
-                .eq('team_id', team.id);
-              
-              if (pointsError) {
-                console.error(`Error fetching points for team ${team.id}:`, pointsError);
-                return { ...team, points: 0, pointHistory: [] };
-              }
-              
-              const totalPoints = pointsData?.reduce((sum, entry) => sum + entry.points, 0) || 0;
-              const pointHistory = pointsData?.map(entry => ({
-                id: entry.updated_at,
-                points: entry.points,
-                reason: entry.reason || "No reason provided",
-                date: entry.updated_at
-              })) || [];
-              
-              return { ...team, points: totalPoints, pointHistory };
-            }));
-            
-            set({
-              teams: teamsWithPoints,
-              lastUpdated: new Date(),
-              isLoading: false
+          return {
+            teams: updatedTeams,
+          };
+        }),
+        
+      resetPoints: () =>
+        set((state) => {
+          const resetTeams = state.teams.map((team) => ({ 
+            ...team, 
+            points: 0,
+            pointHistory: [] 
+          }));
+          
+          // Try to reset points in Supabase
+          try {
+            // Reset team points
+            resetTeams.forEach(async (team) => {
+              supabase
+                .from('teams')
+                .update({ points: 0 })
+                .eq('id', team.id)
+                .then(({ error }) => {
+                  if (error) console.error('Error resetting team points in Supabase:', error);
+                });
             });
-          } else {
-            set({ isLoading: false });
-          }
-        } catch (error) {
-          console.error("Error fetching teams:", error);
-          set({ isLoading: false });
-        }
-      },
-      
-      addPoints: async (teamId, points, reason) => {
-        try {
-          set({ isLoading: true });
-          
-          // Add points to Supabase
-          const { data, error } = await supabase
-            .from('points')
-            .insert([{ team_id: teamId, points, reason, updated_at: new Date().toISOString() }]);
-          
-          if (error) {
-            console.error("Error adding points to Supabase:", error);
-            set({ isLoading: false });
-            return;
-          }
-          
-          // Update local state
-          set((state) => {
-            const updatedTeams = state.teams.map((team) =>
-              team.id === teamId
-                ? { 
-                    ...team, 
-                    points: team.points + points,
-                    pointHistory: [
-                      ...(team.pointHistory || []),
-                      {
-                        id: Date.now().toString(),
-                        points,
-                        reason,
-                        date: new Date().toISOString()
-                      }
-                    ]
-                  }
-                : team
-            );
             
-            return {
-              teams: updatedTeams,
-              lastUpdated: new Date(),
-            };
-          });
+            // Clear point history
+            supabase
+              .from('point_history')
+              .delete()
+              .gte('id', 0)
+              .then(({ error }) => {
+                if (error) console.error('Error clearing point history in Supabase:', error);
+              });
+          } catch (error) {
+            console.error('Failed to reset points in Supabase:', error);
+          }
           
-          set({ isLoading: false });
-        } catch (error) {
-          console.error("Error adding points:", error);
-          set({ isLoading: false });
-        }
-      },
+          return {
+            teams: resetTeams,
+          };
+        }),
         
-      resetPoints: async () => {
-        try {
-          set({ isLoading: true });
+      // New function to reset a single team's points
+      resetTeamPoints: (teamId) =>
+        set((state) => {
+          const updatedTeams = state.teams.map((team) => 
+            team.id === teamId 
+              ? { ...team, points: 0, pointHistory: [] } 
+              : team
+          );
           
-          // Delete all points from Supabase
-          const { error } = await supabase
-            .from('points')
-            .delete()
-            .neq('team_id', ''); // This ensures all records are deleted
-          
-          if (error) {
-            console.error("Error resetting points in Supabase:", error);
-            set({ isLoading: false });
-            return;
+          // Try to reset points in Supabase
+          try {
+            // Reset team points
+            supabase
+              .from('teams')
+              .update({ points: 0 })
+              .eq('id', teamId)
+              .then(({ error }) => {
+                if (error) console.error('Error resetting team points in Supabase:', error);
+              });
+            
+            // Clear point history for this team
+            supabase
+              .from('point_history')
+              .delete()
+              .eq('teamid', teamId)
+              .then(({ error }) => {
+                if (error) console.error('Error clearing team point history in Supabase:', error);
+              });
+          } catch (error) {
+            console.error('Failed to reset team points in Supabase:', error);
           }
           
-          // Update local state
-          set((state) => {
-            const resetTeams = state.teams.map((team) => ({ 
-              ...team, 
-              points: 0,
-              pointHistory: [] 
-            }));
-            
-            return {
-              teams: resetTeams,
-              lastUpdated: new Date(),
-            };
-          });
-          
-          set({ isLoading: false });
-        } catch (error) {
-          console.error("Error resetting points:", error);
-          set({ isLoading: false });
-        }
-      },
-        
-      resetTeamPoints: async (teamId) => {
-        try {
-          set({ isLoading: true });
-          
-          // Delete points for specific team from Supabase
-          const { error } = await supabase
-            .from('points')
-            .delete()
-            .eq('team_id', teamId);
-          
-          if (error) {
-            console.error("Error resetting team points in Supabase:", error);
-            set({ isLoading: false });
-            return;
-          }
-          
-          // Update local state
-          set((state) => {
-            const updatedTeams = state.teams.map((team) => 
-              team.id === teamId 
-                ? { ...team, points: 0, pointHistory: [] } 
-                : team
-            );
-            
-            return {
-              teams: updatedTeams,
-              lastUpdated: new Date(),
-            };
-          });
-          
-          set({ isLoading: false });
-        } catch (error) {
-          console.error("Error resetting team points:", error);
-          set({ isLoading: false });
-        }
-      },
+          return {
+            teams: updatedTeams,
+          };
+        }),
         
       getPointHistory: (teamId) => {
         const team = get().teams.find(t => t.id === teamId);
         return team?.pointHistory || [];
+      },
+      
+      syncWithSupabase: async () => {
+        try {
+          // Fetch teams from Supabase
+          const { data: teamsData, error: teamsError } = await supabase
+            .from('teams')
+            .select('*');
+            
+          if (teamsError) {
+            console.error('Error fetching teams from Supabase:', teamsError);
+            return;
+          }
+          
+          if (teamsData && teamsData.length > 0) {
+            // Fetch point history for each team
+            const teamIds = teamsData.map(team => team.id);
+            const { data: historyData, error: historyError } = await supabase
+              .from('point_history')
+              .select('*')
+              .in('teamid', teamIds);
+              
+            if (historyError) {
+              console.error('Error fetching point history from Supabase:', historyError);
+            }
+            
+            // Map point history to teams
+            const teamsWithHistory = teamsData.map(team => {
+              const teamHistory = historyData?.filter(entry => entry.teamid === team.id) || [];
+              return {
+                ...team,
+                pointHistory: teamHistory.map(entry => ({
+                  id: entry.id.toString(),
+                  points: entry.points,
+                  reason: entry.reason,
+                  date: entry.date
+                }))
+              };
+            });
+            
+            set({ teams: teamsWithHistory });
+          } else {
+            // If no teams in Supabase, initialize with local data
+            initialTeams.forEach(team => {
+              supabase
+                .from('teams')
+                .insert([{
+                  id: team.id,
+                  name: team.name,
+                  color: team.color,
+                  points: team.points
+                }])
+                .then(({ error }) => {
+                  if (error) console.error('Error initializing teams in Supabase:', error);
+                });
+            });
+          }
+        } catch (error) {
+          console.error('Failed to sync with Supabase:', error);
+        }
       }
     }),
     {
       name: "team-storage",
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({
-        // Persist teams to prevent resetting to default values
-        teams: state.teams,
-        lastUpdated: state.lastUpdated
-      }),
     }
   )
 );

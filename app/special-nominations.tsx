@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable, Alert, ActivityIndicator, AppState } from "react-native";
-import { Stack, useRouter, useLocalSearchParams } from "expo-router";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, FlatList, Pressable, Alert } from "react-native";
+import { Stack, useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { NominationTypeSelector, getNominationTypeLabel } from "@/components/NominationTypeSelector";
 import { NominationType } from "@/types";
@@ -9,55 +9,12 @@ import { NominationCard } from "@/components/NominationCard";
 import { Plus, RotateCcw } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/authStore";
-import { usePolling } from "@/hooks/usePolling";
 
 export default function SpecialNominationsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ type?: NominationType, day?: string }>();
-  const [selectedType, setSelectedType] = useState<NominationType>(
-    params.type && ["sportsmanship", "bravery", "service", "scholar", "other"].includes(params.type as string) 
-      ? params.type as NominationType 
-      : "sportsmanship"
-  );
-  
-  const { 
-    getWeeklyNominations, 
-    getTopNominationsByType, 
-    resetVotes, 
-    resetUserVotes, 
-    getUserVoteCount,
-    fetchNominations,
-    isLoading
-  } = useNominationStore();
+  const [selectedType, setSelectedType] = useState<NominationType>("sportsmanship");
+  const { getWeeklyNominations, getTopNominationsByType, resetVotes, resetUserVotes, getUserVoteCount } = useNominationStore();
   const { userProfile } = useAuthStore();
-  
-  // Initial fetch
-  useEffect(() => {
-    fetchNominations(selectedType);
-  }, [selectedType]);
-  
-  // Set up polling to keep nominations data fresh - reduced frequency
-  const { poll } = usePolling(
-    () => fetchNominations(selectedType), 
-    { 
-      interval: 300000, // Poll every 5 minutes
-      immediate: false, // Don't poll immediately on mount (we already fetch in useEffect)
-      enabled: false // Disable automatic polling
-    }
-  );
-  
-  // Manual poll when screen becomes active
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'active') {
-        poll();
-      }
-    });
-    
-    return () => {
-      subscription.remove();
-    };
-  }, [poll, selectedType]);
   
   // Get all nominations of the selected type (not just daily ones)
   const nominations = getWeeklyNominations(selectedType);
@@ -76,31 +33,18 @@ export default function SpecialNominationsScreen() {
         { text: "Cancel", style: "cancel" },
         { 
           text: "Reset", 
-          onPress: async () => {
+          onPress: () => {
             // Reset votes for all days of this type
-            ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].forEach(async (day) => {
-              await resetVotes(day, selectedType);
+            ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].forEach(day => {
+              resetVotes(day, selectedType);
             });
             resetUserVotes(); // Reset user votes when resetting nomination votes
             Alert.alert("Success", "Votes have been reset.");
-            
-            // Refresh data after reset
-            await fetchNominations(selectedType);
           },
           style: "destructive" 
         }
       ]
     );
-  };
-  
-  const handleAddNomination = () => {
-    router.push({
-      pathname: "/add-nomination",
-      params: { 
-        type: selectedType,
-        day: params.day || "Tuesday" // Pass the day if it was provided
-      }
-    });
   };
   
   return (
@@ -116,11 +60,7 @@ export default function SpecialNominationsScreen() {
       
       <NominationTypeSelector
         selectedType={selectedType}
-        onSelectType={(type) => {
-          setSelectedType(type);
-          // Update the URL params when changing type
-          router.setParams({ type });
-        }}
+        onSelectType={setSelectedType}
       />
       
       {userProfile && (
@@ -128,12 +68,6 @@ export default function SpecialNominationsScreen() {
           <Text style={styles.voteCountText}>
             You have used {voteCount}/2 votes for {getNominationTypeLabel(selectedType)}
           </Text>
-        </View>
-      )}
-      
-      {isLoading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       )}
       
@@ -170,7 +104,7 @@ export default function SpecialNominationsScreen() {
       <View style={styles.buttonContainer}>
         <Pressable 
           style={styles.addButton}
-          onPress={handleAddNomination}
+          onPress={() => router.push("/add-nomination")}
         >
           <Plus size={20} color="white" />
         </Pressable>
@@ -192,17 +126,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  loadingContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-    zIndex: 10,
   },
   voteCountContainer: {
     backgroundColor: colors.card,

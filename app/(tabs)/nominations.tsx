@@ -1,19 +1,19 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { View, StyleSheet, FlatList, Text, Pressable, Alert, ActivityIndicator, AppState } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, StyleSheet, FlatList, Text, Pressable, Alert } from "react-native";
 import { DaySelector } from "@/components/DaySelector";
 import { Header } from "@/components/Header";
 import { NominationCard } from "@/components/NominationCard";
 import { useNominationStore } from "@/store/nominationStore";
 import { colors } from "@/constants/colors";
-import { useRouter } from "expo-router";
+import { Link } from "expo-router";
 import { Plus, Award, RotateCcw } from "lucide-react-native";
 import { NominationTypeSelector } from "@/components/NominationTypeSelector";
 import { NominationType } from "@/types";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/authStore";
-import { usePolling } from "@/hooks/usePolling";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function NominationsScreen() {
-  const router = useRouter();
   const [selectedDay, setSelectedDay] = useState("Tuesday");
   const [selectedType, setSelectedType] = useState<NominationType>("daily");
   const { 
@@ -23,52 +23,32 @@ export default function NominationsScreen() {
     resetVotes, 
     resetUserVotes, 
     getUserVoteCount,
-    fetchNominations,
-    isLoading
+    syncWithSupabase
   } = useNominationStore();
   const { userProfile } = useAuthStore();
   
-  // Initial fetch
+  // Set up real-time subscription to nominations
   useEffect(() => {
-    const fetchData = async () => {
-      if (selectedType === "daily") {
-        await fetchNominations(selectedType, selectedDay);
-      } else {
-        await fetchNominations(selectedType);
-      }
-    };
+    // Initial sync
+    syncWithSupabase();
     
-    fetchData();
-  }, [selectedType, selectedDay, fetchNominations]);
-  
-  // Set up polling to keep nominations data fresh - reduced frequency
-  const { poll } = usePolling(
-    () => {
-      if (selectedType === "daily") {
-        return fetchNominations(selectedType, selectedDay);
-      } else {
-        return fetchNominations(selectedType);
-      }
-    }, 
-    { 
-      interval: 300000, // Poll every 5 minutes
-      immediate: false, // Don't poll immediately on mount (we already fetch in useEffect)
-      enabled: false // Disable automatic polling
-    }
-  );
-  
-  // Manual poll when tab becomes active
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (nextAppState === 'active') {
-        poll();
-      }
-    });
-    
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('public:nominations')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'nominations' 
+      }, () => {
+        // Refresh data when changes occur
+        syncWithSupabase();
+      })
+      .subscribe();
+      
     return () => {
-      subscription.remove();
+      supabase.removeChannel(subscription);
     };
-  }, [poll, selectedType, selectedDay]);
+  }, []);
   
   // Get nominations based on type - daily uses the selected day, others show all days
   const displayNominations = selectedType === "daily" 
@@ -88,24 +68,17 @@ export default function NominationsScreen() {
         { text: "Cancel", style: "cancel" },
         { 
           text: "Reset", 
-          onPress: async () => {
+          onPress: () => {
             if (selectedType === "daily") {
-              await resetVotes(selectedDay, selectedType);
+              resetVotes(selectedDay, selectedType);
             } else {
               // For special nominations, reset votes for all days of this type
-              ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].forEach(async (day) => {
-                await resetVotes(day, selectedType);
+              ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].forEach(day => {
+                resetVotes(day, selectedType);
               });
             }
             resetUserVotes(); // Reset user votes when resetting nomination votes
             Alert.alert("Success", "Votes have been reset.");
-            
-            // Refresh data after reset
-            if (selectedType === "daily") {
-              await fetchNominations(selectedType, selectedDay);
-            } else {
-              await fetchNominations(selectedType);
-            }
           },
           style: "destructive" 
         }
@@ -113,22 +86,8 @@ export default function NominationsScreen() {
     );
   };
   
-  const handleAddNomination = () => {
-    router.push({
-      pathname: "/add-nomination",
-      params: { type: selectedType, day: selectedDay }
-    });
-  };
-  
-  const handleViewSpecialNominations = () => {
-    router.push({
-      pathname: "/special-nominations",
-      params: { type: selectedType !== "daily" ? selectedType : "sportsmanship" }
-    });
-  };
-  
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["bottom"]}>
       <Header 
         title="Nominations" 
         subtitle="Vote for outstanding campers"
@@ -156,12 +115,6 @@ export default function NominationsScreen() {
         </View>
       )}
       
-      {isLoading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      )}
-      
       <FlatList
         data={displayNominations}
         keyExtractor={(item) => item.id}
@@ -181,19 +134,17 @@ export default function NominationsScreen() {
       />
       
       <View style={styles.buttonContainer}>
-        <Pressable 
-          style={styles.addButton}
-          onPress={handleAddNomination}
-        >
-          <Plus size={20} color="white" />
-        </Pressable>
+        <Link href="/add-nomination" asChild>
+          <Pressable style={styles.addButton}>
+            <Plus size={20} color="white" />
+          </Pressable>
+        </Link>
         
-        <Pressable 
-          style={styles.specialButton}
-          onPress={handleViewSpecialNominations}
-        >
-          <Award size={18} color="white" />
-        </Pressable>
+        <Link href="/special-nominations" asChild>
+          <Pressable style={styles.specialButton}>
+            <Award size={18} color="white" />
+          </Pressable>
+        </Link>
         
         {displayNominations.length > 0 && (
           <Pressable style={styles.resetButton} onPress={handleResetVotes}>
@@ -201,7 +152,7 @@ export default function NominationsScreen() {
           </Pressable>
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -225,17 +176,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textLight,
     textAlign: "center",
-  },
-  loadingContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-    zIndex: 10,
   },
   listContent: {
     padding: 16,
