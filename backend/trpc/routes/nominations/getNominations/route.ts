@@ -41,7 +41,7 @@ export default publicProcedure
       
       return {
         nominations,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(), // Ensure serializable format
       };
     } catch (error) {
       console.error("Error in getNominations procedure:", error);

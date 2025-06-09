@@ -38,7 +38,7 @@ export default publicProcedure.query(async () => {
     
     return {
       teams: teamsWithPoints,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(), // Ensure serializable format
     };
   } catch (error) {
     console.error("Error in getTeams procedure:", error);
