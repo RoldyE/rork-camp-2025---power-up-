@@ -27,9 +27,6 @@ export default function NominationsScreen() {
   } = useNominationStore();
   const { userProfile } = useAuthStore();
   
-  // Check if user is admin
-  const isAdmin = userProfile?.isAdmin || false;
-  
   // Set up real-time subscription to nominations
   useEffect(() => {
     // Initial sync
@@ -64,11 +61,6 @@ export default function NominationsScreen() {
     : 0;
   
   const handleResetVotes = () => {
-    if (!isAdmin) {
-      Alert.alert("Access Denied", "Only admins can reset votes");
-      return;
-    }
-    
     Alert.alert(
       "Reset Votes",
       `Are you sure you want to reset all votes for ${selectedType} nominations${selectedType === "daily" ? ` on ${selectedDay}` : ""}?`,
@@ -154,7 +146,7 @@ export default function NominationsScreen() {
           </Pressable>
         </Link>
         
-        {isAdmin && displayNominations.length > 0 && (
+        {displayNominations.length > 0 && (
           <Pressable style={styles.resetButton} onPress={handleResetVotes}>
             <RotateCcw size={18} color="white" />
           </Pressable>

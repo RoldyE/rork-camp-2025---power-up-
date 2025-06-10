@@ -8,7 +8,6 @@ interface UserProfile {
   email?: string;
   picture?: string;
   facebookId?: string;
-  isAdmin: boolean;
 }
 
 interface AuthState {
@@ -27,11 +26,7 @@ export const useAuthStore = create<AuthState>()(
       login: (profile) =>
         set({
           isAuthenticated: true,
-          userProfile: {
-            ...profile,
-            // Set admin status based on username being exactly 'admin' (case insensitive)
-            isAdmin: profile.name.toLowerCase().trim() === 'admin'
-          },
+          userProfile: profile,
         }),
       logout: () =>
         set({

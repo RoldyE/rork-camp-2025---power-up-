@@ -22,7 +22,10 @@ export const useTeamStore = create<TeamState>()(
         pointHistory: []
       })),
       
-      addPoints: (teamId, points, reason) =>
+      addPoints: async (teamId, points, reason) => {
+        // Generate proper string ID
+        const pointId = `ph_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
         set((state) => {
           const updatedTeams = state.teams.map((team) =>
             team.id === teamId
@@ -32,7 +35,7 @@ export const useTeamStore = create<TeamState>()(
                   pointHistory: [
                     ...(team.pointHistory || []),
                     {
-                      id: `ph_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                      id: pointId,
                       points,
                       reason,
                       date: new Date().toISOString()
@@ -45,7 +48,6 @@ export const useTeamStore = create<TeamState>()(
           // Try to update in Supabase
           try {
             // Add to point history
-            const pointId = `ph_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             supabase
               .from('point_history')
               .insert([{
@@ -77,9 +79,10 @@ export const useTeamStore = create<TeamState>()(
           return {
             teams: updatedTeams,
           };
-        }),
+        });
+      },
         
-      resetPoints: () =>
+      resetPoints: async () => {
         set((state) => {
           const resetTeams = state.teams.map((team) => ({ 
             ...team, 
@@ -115,10 +118,11 @@ export const useTeamStore = create<TeamState>()(
           return {
             teams: resetTeams,
           };
-        }),
+        });
+      },
         
       // Reset only a specific team's points
-      resetTeamPoints: (teamId) =>
+      resetTeamPoints: async (teamId) => {
         set((state) => {
           const updatedTeams = state.teams.map((team) => 
             team.id === teamId 
@@ -152,7 +156,8 @@ export const useTeamStore = create<TeamState>()(
           return {
             teams: updatedTeams,
           };
-        }),
+        });
+      },
         
       getPointHistory: (teamId) => {
         const team = get().teams.find(t => t.id === teamId);

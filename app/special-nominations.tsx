@@ -16,9 +16,6 @@ export default function SpecialNominationsScreen() {
   const { getWeeklyNominations, getTopNominationsByType, resetVotes, resetUserVotes, getUserVoteCount } = useNominationStore();
   const { userProfile } = useAuthStore();
   
-  // Check if user is admin
-  const isAdmin = userProfile?.isAdmin || false;
-  
   // Get all nominations of the selected type (not just daily ones)
   const nominations = getWeeklyNominations(selectedType);
   const topNominations = getTopNominationsByType(selectedType, 3);
@@ -29,11 +26,6 @@ export default function SpecialNominationsScreen() {
     : 0;
   
   const handleResetVotes = () => {
-    if (!isAdmin) {
-      Alert.alert("Access Denied", "Only admins can reset votes");
-      return;
-    }
-    
     Alert.alert(
       "Reset Votes",
       `Are you sure you want to reset all votes for ${getNominationTypeLabel(selectedType)} nominations?`,
@@ -117,7 +109,7 @@ export default function SpecialNominationsScreen() {
           <Plus size={20} color="white" />
         </Pressable>
         
-        {isAdmin && nominations.length > 0 && (
+        {nominations.length > 0 && (
           <Pressable 
             style={styles.resetButton}
             onPress={handleResetVotes}

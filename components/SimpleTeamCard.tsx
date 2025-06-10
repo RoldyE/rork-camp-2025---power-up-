@@ -3,7 +3,9 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Team } from "@/types";
 import { colors } from "@/constants/colors";
 import { useRouter } from "expo-router";
-import { ChevronRight } from "lucide-react-native";
+import { ChevronRight, RotateCcw } from "lucide-react-native";
+import { useTeamStore } from "@/store/teamStore";
+import { Alert } from "react-native";
 
 type SimpleTeamCardProps = {
   team: Team;
@@ -11,9 +13,30 @@ type SimpleTeamCardProps = {
 
 export const SimpleTeamCard = ({ team }: SimpleTeamCardProps) => {
   const router = useRouter();
+  const { resetTeamPoints } = useTeamStore();
   
   const handleViewDetails = () => {
     router.push(`/team-details/${team.id}`);
+  };
+  
+  const handleResetTeam = (e: any) => {
+    e.stopPropagation(); // Prevent navigation when reset is pressed
+    
+    Alert.alert(
+      "Reset Team Points",
+      `Are you sure you want to reset ${team.name}'s points to zero?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Reset", 
+          onPress: () => {
+            resetTeamPoints(team.id);
+            Alert.alert("Success", `${team.name}'s points have been reset to zero.`);
+          },
+          style: "destructive" 
+        }
+      ]
+    );
   };
   
   return (
@@ -32,6 +55,12 @@ export const SimpleTeamCard = ({ team }: SimpleTeamCardProps) => {
         <Text style={styles.pointsLabel}>Points</Text>
         <Text style={styles.pointsValue}>{team.points}</Text>
       </View>
+      <Pressable 
+        style={styles.resetButton}
+        onPress={handleResetTeam}
+      >
+        <RotateCcw size={12} color={colors.error} />
+      </Pressable>
       <View style={styles.detailsButton}>
         <ChevronRight size={16} color={colors.primary} />
       </View>
@@ -80,6 +109,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: colors.primary,
+  },
+  resetButton: {
+    width: 24,
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: `${colors.error}08`,
   },
   detailsButton: {
     width: 32,

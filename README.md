@@ -14,63 +14,68 @@ Copy and paste the entire content of `supabase-setup-fixed.sql` into your Supaba
 
 ### 2. Key Fixes Applied
 
-**RLS Policy Issues Fixed:**
-- Created permissive policies that allow all operations
-- Policies now use `FOR ALL USING (true) WITH CHECK (true)`
-
 **ID Generation Fixed:**
 - Changed from UUID to TEXT IDs with proper prefixes
 - Point history IDs: `ph_timestamp_randomstring`
 - Nomination IDs: `nom_timestamp_randomstring`
 - Vote IDs: `vote_timestamp_randomstring`
 
-**Admin Access Fixed:**
-- Login with username "admin" (case insensitive) to get admin privileges
-- Only admins can add/reset points and reset votes
-- Regular users can only vote and view information
+**Admin Permissions Removed:**
+- No more admin checks blocking functionality
+- All users can add points, vote, and manage teams
+- Simplified user experience
 
 **Teams View Fixed:**
-- Simplified team cards with smaller height (60px)
-- Reduced gaps and improved scrolling
-- Compact design showing team name and points
+- Compact team cards with 60px height
+- Small discrete reset button for each team
+- Individual team reset (not all teams)
+- Proper scrolling with reduced gaps
 
 **Individual Team Reset Fixed:**
-- Reset button only appears on individual team detail pages
-- Only resets the specific team's points, not all teams
+- Reset button only resets the specific team's points
 - Clear confirmation dialog explains it's individual reset only
+- Available both in team list and team detail pages
+
+**Supabase Integration Fixed:**
+- Proper string ID generation for all operations
+- Fixed nomination and vote recording
+- Real-time sync working properly
+- Error handling for all database operations
 
 ### 3. Testing the App
 
-1. **Admin Testing:**
-   - Login as "admin" to test admin features
-   - Try adding points to individual teams
-   - Test individual team reset (only resets that team)
+1. **Team Management:**
+   - View compact team list with points
+   - Tap any team to view details and add points
+   - Use discrete reset button to reset individual team points
 
-2. **Regular User Testing:**
-   - Login with any other name to test regular user features
-   - Try voting on nominations
-   - Verify you cannot add points or reset
+2. **Nominations:**
+   - Add nominations for any camper
+   - Vote on nominations (2 votes per category)
+   - View special nominations by category
 
-3. **Teams View:**
-   - Should show compact list of all teams
-   - Each team card shows name and current points
-   - Tap any team to view details and manage points (admin only)
+3. **Points System:**
+   - Add quick points (+1, +2, +5, +10) to teams
+   - Add custom points with reasons
+   - View point history for each team
 
 ### 4. Troubleshooting
 
 If you still see errors:
-1. **RLS Errors:** Make sure you ran the complete `supabase-setup-fixed.sql` script
-2. **UUID Errors:** Clear app cache and restart - the new ID system should fix this
-3. **Admin Issues:** Make sure you're logging in with exactly "admin" as the username
-4. **Team View:** The simplified cards should now be much more compact and scrollable
+1. **Database Errors:** Make sure you ran the complete `supabase-setup-fixed.sql` script
+2. **ID Errors:** Clear app cache and restart - the new ID system should fix this
+3. **Team View:** The simplified cards should now be compact and scrollable
+4. **Reset Issues:** Individual reset only affects the selected team
 
 ### 5. What's Fixed
 
-- ✅ RLS policy errors resolved with permissive policies
-- ✅ UUID errors fixed with TEXT ID system
-- ✅ Admin detection works with "admin" username
-- ✅ Teams view is compact and scrollable
+- ✅ Removed admin permission requirements
+- ✅ Fixed UUID errors with TEXT ID system
+- ✅ Teams view is compact and scrollable (60px height cards)
 - ✅ Individual team reset only affects that team
-- ✅ Proper error handling and ID generation
+- ✅ Discrete reset buttons in team list
+- ✅ Proper Supabase integration with error handling
+- ✅ Fixed nomination and vote recording
+- ✅ Real-time sync working properly
 
-The app now properly syncs with Supabase and handles all the previous issues with permissions, IDs, and team management.
+The app now works without admin restrictions and properly syncs all data with Supabase.
