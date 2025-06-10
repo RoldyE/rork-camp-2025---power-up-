@@ -4,51 +4,73 @@ A React Native mobile app for managing church camp activities, team points, and 
 
 ## Supabase Setup Instructions
 
-### 1. Run the SQL Setup Script
+### 1. Run the Fixed SQL Setup Script
 
-Copy and paste the entire content of `supabase-setup.sql` into your Supabase SQL Editor and run it. This will:
-- Create all necessary tables with correct column names
+Copy and paste the entire content of `supabase-setup-fixed.sql` into your Supabase SQL Editor and run it. This will:
+- Create all necessary tables with TEXT IDs (not UUIDs)
 - Insert initial team and camper data
-- Set up Row Level Security policies
+- Set up permissive Row Level Security policies
 - Enable real-time subscriptions
 
-### 2. Verify Tables Created
+### 2. Key Fixes Applied
 
-After running the SQL script, you should see these tables in your Supabase dashboard:
-- `teams` - Team information and points
-- `campers` - Camper information linked to teams
-- `point_history` - History of points added to teams
-- `nominations` - Camper nominations for various categories
-- `user_votes` - User voting history
+**RLS Policy Issues Fixed:**
+- Created permissive policies that allow all operations
+- Policies now use `FOR ALL USING (true) WITH CHECK (true)`
 
-### 3. Admin Access
+**ID Generation Fixed:**
+- Changed from UUID to TEXT IDs with proper prefixes
+- Point history IDs: `ph_timestamp_randomstring`
+- Nomination IDs: `nom_timestamp_randomstring`
+- Vote IDs: `vote_timestamp_randomstring`
 
-- Login with username "admin" to get admin privileges
-- Admins can add/reset points and reset votes
+**Admin Access Fixed:**
+- Login with username "admin" (case insensitive) to get admin privileges
+- Only admins can add/reset points and reset votes
 - Regular users can only vote and view information
 
-### 4. Key Features Fixed
+**Teams View Fixed:**
+- Simplified team cards with smaller height (60px)
+- Reduced gaps and improved scrolling
+- Compact design showing team name and points
 
-- **Teams View**: Simple scrollable list with smaller cards
-- **Individual Team Reset**: Reset button only appears on individual team pages for admins
-- **Admin Permissions**: Only admins can add points and reset data
-- **Proper Column Names**: All Supabase queries use correct column names (teamid, camperid, etc.)
-- **RLS Policies**: Permissive policies allow all operations for now
+**Individual Team Reset Fixed:**
+- Reset button only appears on individual team detail pages
+- Only resets the specific team's points, not all teams
+- Clear confirmation dialog explains it's individual reset only
 
-### 5. Testing the App
+### 3. Testing the App
 
-1. Login as "admin" to test admin features
-2. Login with any other name to test regular user features
-3. Try adding points to teams (admin only)
-4. Try voting on nominations (all users)
-5. Test the reset functionality (admin only)
+1. **Admin Testing:**
+   - Login as "admin" to test admin features
+   - Try adding points to individual teams
+   - Test individual team reset (only resets that team)
 
-### 6. Troubleshooting
+2. **Regular User Testing:**
+   - Login with any other name to test regular user features
+   - Try voting on nominations
+   - Verify you cannot add points or reset
+
+3. **Teams View:**
+   - Should show compact list of all teams
+   - Each team card shows name and current points
+   - Tap any team to view details and manage points (admin only)
+
+### 4. Troubleshooting
 
 If you still see errors:
-1. Make sure you ran the complete SQL script
-2. Check that all tables exist in your Supabase dashboard
-3. Verify the RLS policies are in place
-4. Clear the app cache and restart
+1. **RLS Errors:** Make sure you ran the complete `supabase-setup-fixed.sql` script
+2. **UUID Errors:** Clear app cache and restart - the new ID system should fix this
+3. **Admin Issues:** Make sure you're logging in with exactly "admin" as the username
+4. **Team View:** The simplified cards should now be much more compact and scrollable
 
-The app now properly syncs with Supabase and handles all the column name mismatches and permission issues.
+### 5. What's Fixed
+
+- ✅ RLS policy errors resolved with permissive policies
+- ✅ UUID errors fixed with TEXT ID system
+- ✅ Admin detection works with "admin" username
+- ✅ Teams view is compact and scrollable
+- ✅ Individual team reset only affects that team
+- ✅ Proper error handling and ID generation
+
+The app now properly syncs with Supabase and handles all the previous issues with permissions, IDs, and team management.

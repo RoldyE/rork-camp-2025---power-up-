@@ -29,8 +29,8 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
           userProfile: {
             ...profile,
-            // Set admin status based on username
-            isAdmin: profile.name.toLowerCase() === 'admin'
+            // Set admin status based on username being exactly 'admin' (case insensitive)
+            isAdmin: profile.name.toLowerCase().trim() === 'admin'
           },
         }),
       logout: () =>

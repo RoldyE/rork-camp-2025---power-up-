@@ -108,7 +108,7 @@ export default function TeamDetailsScreen() {
     
     Alert.alert(
       "Reset Team Points",
-      `Are you sure you want to reset ${team.name}'s points to zero?`,
+      `Are you sure you want to reset ${team.name}'s points to zero? This will only reset this team's points, not all teams.`,
       [
         { text: "Cancel", style: "cancel" },
         { 

@@ -32,7 +32,7 @@ export const useTeamStore = create<TeamState>()(
                   pointHistory: [
                     ...(team.pointHistory || []),
                     {
-                      id: Date.now().toString(),
+                      id: `ph_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                       points,
                       reason,
                       date: new Date().toISOString()
@@ -45,7 +45,7 @@ export const useTeamStore = create<TeamState>()(
           // Try to update in Supabase
           try {
             // Add to point history
-            const pointId = Date.now().toString();
+            const pointId = `ph_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             supabase
               .from('point_history')
               .insert([{
@@ -126,7 +126,7 @@ export const useTeamStore = create<TeamState>()(
               : team
           );
           
-          // Try to reset points in Supabase
+          // Try to reset points in Supabase for this specific team only
           try {
             // Reset team points
             supabase
@@ -137,7 +137,7 @@ export const useTeamStore = create<TeamState>()(
                 if (error) console.error('Error resetting team points in Supabase:', error);
               });
             
-            // Clear point history for this team
+            // Clear point history for this team only
             supabase
               .from('point_history')
               .delete()

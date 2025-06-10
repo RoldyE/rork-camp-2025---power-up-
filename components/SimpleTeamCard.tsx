@@ -33,7 +33,7 @@ export const SimpleTeamCard = ({ team }: SimpleTeamCardProps) => {
         <Text style={styles.pointsValue}>{team.points}</Text>
       </View>
       <View style={styles.detailsButton}>
-        <ChevronRight size={18} color={colors.primary} />
+        <ChevronRight size={16} color={colors.primary} />
       </View>
     </Pressable>
   );
@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     backgroundColor: colors.card,
-    borderRadius: 12,
+    borderRadius: 8,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -51,14 +51,14 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
     marginBottom: 8,
-    height: 70,
+    height: 60,
   },
   colorBar: {
-    width: 6,
+    width: 4,
   },
   contentContainer: {
     flex: 1,
-    padding: 16,
+    padding: 12,
     justifyContent: "center",
   },
   teamName: {
@@ -67,25 +67,25 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   pointsContainer: {
-    padding: 16,
+    padding: 12,
     alignItems: "center",
     justifyContent: "center",
-    width: 80,
+    width: 70,
   },
   pointsLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: colors.textLight,
   },
   pointsValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: colors.primary,
   },
   detailsButton: {
-    width: 40,
+    width: 32,
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: `${colors.primary}10`,
+    backgroundColor: `${colors.primary}08`,
   },
 });

@@ -36,7 +36,7 @@ export const useNominationStore = create<NominationState>()(
       userVotes: [],
       
       addNomination: async (nomination) => {
-        const newId = Date.now().toString();
+        const newId = `nom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const newNomination = {
           ...nomination,
           id: newId,
@@ -95,8 +95,8 @@ export const useNominationStore = create<NominationState>()(
                 if (error) console.error('Error updating votes in Supabase:', error);
               });
             
-            // Record the vote
-            const voteId = Date.now().toString();
+            // Record the vote with proper ID
+            const voteId = `vote_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             supabase
               .from('user_votes')
               .insert([{
@@ -236,7 +236,7 @@ export const useNominationStore = create<NominationState>()(
         
         // Try to record in Supabase
         try {
-          const voteId = Date.now().toString();
+          const voteId = `vote_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           supabase
             .from('user_votes')
             .insert([{
